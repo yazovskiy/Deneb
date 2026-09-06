@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" role="img" aria-labelledby="title desc">
+  <title id="title">Deneb</title><desc id="desc">Downloads, under control. A terminal download manager for macOS.</desc>
+  <defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#10172b"/><stop offset="1" stop-color="#202c4b"/></linearGradient><radialGradient id="glow"><stop stop-color="#a5b4fc" stop-opacity=".32"/><stop offset="1" stop-color="#a5b4fc" stop-opacity="0"/></radialGradient></defs>
+  <rect width="1200" height="340" rx="24" fill="url(#bg)"/>
+  <circle cx="939" cy="148" r="180" fill="url(#glow)"/>
+  <g stroke="#7080a8" stroke-width="1.4" opacity=".5"><path d="M815 246 882 191 942 109 1031 70M882 191 1047 237M942 109 830 74" fill="none"/></g>
+  <g fill="#9eadcf"><circle cx="815" cy="246" r="3"/><circle cx="882" cy="191" r="4"/><circle cx="1031" cy="70" r="3"/><circle cx="1047" cy="237" r="3"/><circle cx="830" cy="74" r="3"/><circle cx="724" cy="91" r="1.5"/><circle cx="1103" cy="148" r="1.5"/></g>
+  <path d="m942 87 5 17 17 5-17 5-5 17-5-17-17-5 17-5z" fill="#e0e7ff"/>
+  <text x="74" y="79" fill="#a5b4fc" font-family="sans-serif" font-size="15" letter-spacing="4">TERMINAL DOWNLOAD MANAGER</text>
+  <text x="69" y="184" fill="#f4f6ff" font-family="sans-serif" font-weight="700" font-size="96" letter-spacing="-4">Deneb</text>
+  <text x="75" y="231" fill="#b5c3df" font-family="sans-serif" font-size="25">Downloads, under control.</text>
+  <rect x="75" y="270" width="263" height="3" rx="1.5" fill="#35456a"/><rect x="75" y="270" width="198" height="3" rx="1.5" fill="#a5b4fc"/>
+  <text x="359" y="277" fill="#93a6cb" font-family="monospace" font-size="14">macOS · ARM64 · .NET 10</text>
+</svg>
