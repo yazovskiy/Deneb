@@ -36,6 +36,12 @@
           "System.CodeDom": "9.0.4"
         }
       },
+      "deneb.control": {
+        "type": "Project",
+        "dependencies": {
+          "Deneb.Core": "[1.0.0, )"
+        }
+      },
       "deneb.core": {
         "type": "Project"
       }

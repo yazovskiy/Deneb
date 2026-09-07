@@ -246,7 +246,7 @@ public sealed class DownloadTests : IDisposable
             Assert.Throws<ProblemException>(() => new StateStore(StateDir));
         }
         File.WriteAllText(Path.Combine(StateDir, "state.json"), "broken");
-        using var recovered = new StateStore(StateDir); Assert.Equal(3, recovered.Load().Version);
+        using var recovered = new StateStore(StateDir); Assert.Equal(4, recovered.Load().Version);
         recovered.Save(new()); Assert.NotNull(JsonSerializer.Deserialize<Library>(File.ReadAllText(Path.Combine(StateDir, "state.json.bak"))));
     }
     [Fact]
@@ -266,7 +266,7 @@ public sealed class DownloadTests : IDisposable
             Segments = [new() { Start = 0, End = server.Data.Length - 1, Committed = 65536 }]
         };
         Directory.CreateDirectory(job.PartsDirectory);
-        await File.WriteAllBytesAsync(Path.Combine(job.PartsDirectory, "000.part"), server.Data[..131072]);
+        await File.WriteAllBytesAsync(Path.Combine(job.PartsDirectory, job.Segments[0].FileName), server.Data[..131072]);
         using (var store = new StateStore(StateDir)) store.Save(new() { Jobs = [job] });
         await using var e = Engine(); var done = await Finished(e, job.Id);
         Assert.Equal(server.Data, await File.ReadAllBytesAsync(done.Target!));

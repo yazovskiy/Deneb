@@ -1,0 +1,35 @@
+name: Portable core and control
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.300'
+      - run: dotnet restore --locked-mode
+      - run: dotnet test --no-restore --logger trx
+      - name: Background process lifecycle
+        shell: pwsh
+        run: |
+          $store = Join-Path ([IO.Path]::GetTempPath()) ("deneb-ci-" + [guid]::NewGuid())
+          $binary = "src/Deneb.App/bin/Debug/net10.0/deneb"
+          if ($IsWindows) { $binary += ".exe" }
+          try {
+            & $binary start --state-dir $store
+            if ($LASTEXITCODE -ne 0) { throw "start failed" }
+            & $binary pause --state-dir $store
+            if ($LASTEXITCODE -ne 0) { throw "pause failed" }
+            & $binary status --state-dir $store
+            if ($LASTEXITCODE -ne 0) { throw "status failed" }
+            & $binary stop --state-dir $store
+            if ($LASTEXITCODE -ne 0) { throw "stop failed" }
+          } finally { & $binary stop --state-dir $store }
+      - run: git diff --exit-code -- '**/packages*.lock.json'

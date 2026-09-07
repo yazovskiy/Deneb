@@ -17,7 +17,10 @@ F3/F4 — выше/ниже; F5 — скачать следующей (без с
 F6 — общая пауза/продолжение
 Enter — подробности; Delete — убрать выбранные
 O — открыть; F7 — Finder; F8 — скопировать путь
-F9 — очистить завершённые; Q/Ctrl+C — выход</value></data>
+F9 — очистить завершённые; Q/Ctrl+C — выход
+Q / Ctrl+C — закрыть только интерфейс
+F10 — остановить Deneb
+F11 / F12 — подключиться / запустить при потере связи</value></data>
   <data name="File" xml:space="preserve"><value>Файл</value></data>
   <data name="State" xml:space="preserve"><value>Состояние</value></data>
   <data name="Percent" xml:space="preserve"><value>%</value></data>
@@ -79,19 +82,21 @@ F9 — очистить завершённые; Q/Ctrl+C — выход</value><
   <data name="Save" xml:space="preserve"><value>Сохранить</value></data>
   <data name="SettingsTitle" xml:space="preserve"><value>Настройки (потоки — для новых задач)</value></data>
   <data name="ActiveFilesLabel" xml:space="preserve"><value>Одновременных файлов:</value></data>
-  <data name="ConnectionsLabel" xml:space="preserve"><value>Соединений на файл:</value></data>
+  <data name="ConnectionsLabel" xml:space="preserve"><value>Макс. соединений на файл (1–16)</value></data>
   <data name="DestinationLabel" xml:space="preserve"><value>Папка загрузок:</value></data>
   <data name="LanguageLabel" xml:space="preserve"><value>Language / Язык</value></data>
   <data name="English" xml:space="preserve"><value>English</value></data>
   <data name="Russian" xml:space="preserve"><value>Русский</value></data>
-  <data name="CliHelp" xml:space="preserve"><value>deneb — интерактивный менеджер загрузок.
---state-dir PATH: отдельное хранилище
---version: показать версию
---help: показать справку
-F2: Language / Язык — English или Русский</value></data>
+  <data name="CliHelp" xml:space="preserve"><value>Deneb 2.0 — фоновый менеджер загрузок
+Использование: deneb [start|status|pause|resume|stop] [--state-dir ПУТЬ]
+Без команды: открыть интерфейс, при необходимости запустить фон.
+Q / Ctrl+C: закрыть только интерфейс. F10: остановить Deneb с подтверждением.
+start: запустить фон; status: состояние; pause/resume: только общая пауза; stop: сохранить и остановить.
+F2: максимум соединений на файл (применяется сразу), язык и настройки.
+--help и --version не запускают движок и не изменяют хранилище.</value></data>
   <data name="MissingStatePath" xml:space="preserve"><value>Укажите путь после --state-dir.</value></data>
   <data name="InteractiveRequired" xml:space="preserve"><value>Запустите Deneb в интерактивном терминале.</value></data>
-  <data name="Shutdown" xml:space="preserve"><value>Сохраняю прогресс и останавливаю загрузки…</value></data>
+  <data name="Shutdown" xml:space="preserve"><value>Интерфейс закрыт. Управление фоном: deneb status / deneb stop.</value></data>
   <data name="StartupError" xml:space="preserve"><value>Ошибка запуска Deneb: {0}</value></data>
   <data name="Error_EmptyInput" xml:space="preserve"><value>Добавьте хотя бы одну HTTP/HTTPS-ссылку.</value></data>
   <data name="Error_InvalidUrl" xml:space="preserve"><value>Нужна корректная HTTP/HTTPS-ссылка без логина и пароля в адресе.</value></data>
@@ -146,4 +151,25 @@ F2: Language / Язык — English или Русский</value></data>
   <data name="Phase_Waiting" xml:space="preserve"><value>Ожидание</value></data>
   <data name="Phase_Assembling" xml:space="preserve"><value>Сборка</value></data>
   <data name="Phase_Verifying" xml:space="preserve"><value>Проверка файла</value></data>
+  <data name="Error_Protocol" xml:space="preserve"><value>Некорректная локальная команда или сообщение.</value></data>
+  <data name="Error_Incompatible" xml:space="preserve"><value>Версия фонового процесса несовместима. Перед обновлением остановите его соответствующей версией Deneb.</value></data>
+  <data name="Error_InterfaceOpen" xml:space="preserve"><value>Интерфейс этой очереди уже открыт.</value></data>
+  <data name="Error_DisconnectedControl" xml:space="preserve"><value>Связь потеряна. Последняя команда могла выполниться; переподключитесь и проверьте результат перед повтором.</value></data>
+  <data name="Error_BackgroundMissing" xml:space="preserve"><value>Фоновый процесс не запущен.</value></data>
+  <data name="Error_BackgroundTimeout" xml:space="preserve"><value>Истекло время ожидания фонового процесса. Проверьте его состояние: он может запускаться или останавливаться. Возможно, хранилище занято старой версией Deneb.</value></data>
+  <data name="Error_UnsupportedPlatform" xml:space="preserve"><value>Это действие с файлом пока недоступно на этой платформе.</value></data>
+  <data name="BackgroundStopped" xml:space="preserve"><value>Фоновый процесс остановлен.</value></data>
+  <data name="BackgroundStatus" xml:space="preserve"><value>Фон работает: задач — {0}, скачиваются — {1}. {2}</value></data>
+  <data name="StopTitle" xml:space="preserve"><value>Остановить Deneb</value></data>
+  <data name="StopPrompt" xml:space="preserve"><value>Остановить загрузки и фоновый процесс? Прогресс будет сохранён.</value></data>
+  <data name="Stop" xml:space="preserve"><value>Остановить</value></data>
+  <data name="DisconnectedBanner" xml:space="preserve"><value>Нет связи — F11: подключиться  F12: запустить и подключиться  Q: закрыть</value></data>
+  <data name="ConnectionCount" xml:space="preserve"><value>{0}/{1}</value></data>
+  <data name="ConnectionDetail" xml:space="preserve"><value>Соединения: {0}/{1}. {2} {3}</value></data>
+  <data name="ApplyingConnections" xml:space="preserve"><value>Применяется новый лимит…</value></data>
+  <data name="Constraint_None" xml:space="preserve"><value>Максимум одновременных запросов.</value></data>
+  <data name="Constraint_Server" xml:space="preserve"><value>Сервер или валидаторы не позволяют параллельные запросы.</value></data>
+  <data name="Constraint_FileSize" xml:space="preserve"><value>Файл меньше 16 МиБ.</value></data>
+  <data name="Constraint_Remainder" xml:space="preserve"><value>Недостаточно оставшихся данных для дополнительных соединений.</value></data>
+  <data name="Constraint_Retry" xml:space="preserve"><value>Часть диапазонов ожидает повтора.</value></data>
 </root>

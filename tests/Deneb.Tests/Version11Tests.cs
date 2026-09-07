@@ -43,7 +43,7 @@ public sealed class Version11Tests : IDisposable
     {
         Directory.CreateDirectory(root); var path = Path.Combine(root, "state.json");
         var original = JsonSerializer.Serialize(new Library { Version = 1, Jobs = [new() { Name = "Тест", State = DownloadState.Paused }] }); File.WriteAllText(path, original);
-        using (var store = new StateStore(root)) { var state = store.Load(); Assert.Equal(3, state.Version); Assert.False(state.GloballyPaused); Assert.Equal("Тест", state.Jobs[0].Name); store.Save(state); }
+        using (var store = new StateStore(root)) { var state = store.Load(); Assert.Equal(4, state.Version); Assert.False(state.GloballyPaused); Assert.Equal("Тест", state.Jobs[0].Name); store.Save(state); }
         Assert.Equal(original, File.ReadAllText(path + ".v1.bak"));
         File.WriteAllText(path, "{\"Version\":99}");
         using var future = new StateStore(root); Assert.Throws<ProblemException>(() => future.Load()); Assert.Equal("{\"Version\":99}", File.ReadAllText(path));

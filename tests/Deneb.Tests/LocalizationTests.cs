@@ -30,6 +30,7 @@ public sealed class LocalizationTests : IDisposable
         }
         foreach (var code in Enum.GetValues<ProblemCode>()) Assert.Contains("Error_" + code, en.Keys);
         foreach (var phase in Enum.GetValues<DownloadPhase>()) Assert.Contains("Phase_" + phase, en.Keys);
+        foreach (var constraint in Enum.GetValues<ConnectionConstraint>()) Assert.Contains("Constraint_" + constraint, en.Keys);
         Assert.Throws<MissingManifestResourceException>(() => new Localization().Text("MissingKey"));
         Assert.Equal(en["WindowTitle"], Localization.Resources.GetString("WindowTitle", CultureInfo.GetCultureInfo("fr-FR")));
     }
@@ -78,7 +79,7 @@ public sealed class LocalizationTests : IDisposable
         var json = JsonSerializer.Serialize(library); var path = Path.Combine(root, "state.json"); File.WriteAllText(path, json);
         Assert.Equal("en", StateStore.ReadLanguage(root)); Assert.False(File.Exists(path + $".v{version}.bak"));
         using var store = new StateStore(root); var loaded = store.Load();
-        Assert.Equal(3, loaded.Version); Assert.Equal("en", loaded.Settings.Language); Assert.Equal(version == 2, loaded.GloballyPaused);
+        Assert.Equal(4, loaded.Version); Assert.Equal("en", loaded.Settings.Language); Assert.Equal(version == 2, loaded.GloballyPaused);
         Assert.Equal(job.Id, loaded.Jobs[0].Id); Assert.Equal(job.ETag, loaded.Jobs[0].ETag); Assert.Equal(12, loaded.Jobs[0].Segments[0].Committed);
         Assert.Equal(ProblemCode.HttpDenied, loaded.Jobs[0].Diagnostic!.Code); Assert.Equal(403, loaded.Jobs[0].Diagnostic!.Status); Assert.Null(loaded.Jobs[0].Error);
         Assert.Equal(ProblemCode.Legacy, loaded.Jobs[1].Diagnostic!.Code); Assert.Equal("Неизвестная старая ошибка", loaded.Jobs[1].Diagnostic!.LegacyText);

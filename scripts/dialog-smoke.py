@@ -91,7 +91,7 @@ for language in ("en", "ru"):
                 pump()
                 output.clear()
                 os.write(master, b"q")
-                expect("Saving progress" if language == "en" else "Сохраняю прогресс")
+                expect("Interface closed" if language == "en" else "Интерфейс закрыт")
                 process.wait(timeout=10)
                 assert process.returncode == 0
                 saved = json.loads(Path(root, "state.json").read_text())
@@ -101,5 +101,6 @@ for language in ("en", "ru"):
                 if process.poll() is None:
                     os.killpg(process.pid, signal.SIGTERM)
                     process.wait(timeout=5)
+                subprocess.run([binary, "stop", "--state-dir", root], capture_output=True, timeout=35)
                 os.close(master)
 print("DIALOG PASS: EN/RU, 120x35, all detail buttons, long error scrolling, restart cancellation")

@@ -7,6 +7,7 @@ public sealed class MacFileActions(Func<string, IReadOnlyList<string>, string?, 
 {
     public async Task ExecuteAsync(string path, string action)
     {
+        if (runner == null && !OperatingSystem.IsMacOS()) throw new ProblemException(ProblemCode.UnsupportedPlatform);
         if (action != "copy" && !File.Exists(path)) throw new ProblemException(ProblemCode.MissingFile);
         var executable = action == "copy" ? "/usr/bin/pbcopy" : "/usr/bin/open";
         string[] arguments = action == "copy" ? [] : action == "reveal" ? ["-R", path] : [path];

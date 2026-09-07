@@ -22,6 +22,9 @@ public sealed partial class DownloadEngine : IAsyncDisposable
         public Task Task { get; set; } = Task.CompletedTask;
         public long Bytes;
         public int Connections;
+        public int AppliedLimit;
+        public bool Applying;
+        public Problem? ConnectionError;
         public SpeedWindow Meter { get; init; } = null!;
         public DownloadPhase Phase = DownloadPhase.Probing;
         public Progress Probe { get; } = new();
@@ -35,6 +38,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
         public long? RetryAt;
         public TimeSpan Delay;
         public Problem? Error;
+        public bool RequestActive;
     }
     private sealed record Remote(long? Size, bool Ranges, string? ETag, DateTimeOffset? Modified, string? Name);
     private sealed class DecisionException(Problem problem) : ProblemException(problem);
@@ -55,7 +59,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
             MaxConnectionsPerServer = 256
         })
         { Timeout = Timeout.InfiniteTimeSpan };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("Deneb/1.2");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Deneb/2.0");
         client.DefaultRequestHeaders.AcceptEncoding.ParseAdd("identity");
         foreach (var job in library.Jobs)
         {
@@ -99,7 +103,13 @@ public sealed partial class DownloadEngine : IAsyncDisposable
     public void SetSettings(Settings settings)
     {
         settings.Validate();
-        lock (gate) { library.Settings = new() { ActiveFiles = settings.ActiveFiles, Connections = settings.Connections, Destination = settings.Destination, Language = settings.Language }; Save(); }
+        lock (gate)
+        {
+            var previous = library.Settings;
+            library.Settings = new() { ActiveFiles = settings.ActiveFiles, Connections = settings.Connections, Destination = settings.Destination, Language = settings.Language };
+            try { store.Save(library); PersistenceError = null; }
+            catch { library.Settings = previous; PersistenceError = new(ProblemCode.Persistence); throw new ProblemException(ProblemCode.Persistence); }
+        }
     }
     public Guid Add(DownloadInput input, string? destination = null, string? name = null)
     {
@@ -129,6 +139,10 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                 Eta = r?.Phase == DownloadPhase.Transferring && j.State == DownloadState.Downloading && j.Total.HasValue ? r.Meter.Eta(j.Total.Value - bytes) : null,
                 Retry = r?.Probe.Retry ?? 0,
                 RetryIn = RetryRemaining(r?.Probe),
+                ConnectionLimit = library.Settings.Connections,
+                ApplyingConnections = r?.Applying == true || (r?.Phase == DownloadPhase.Transferring && r.AppliedLimit != library.Settings.Connections),
+                ConnectionError = j.ConnectionDiagnostic ?? r?.ConnectionError,
+                ConnectionConstraint = !j.Ranges ? ConnectionConstraint.Server : j.Total < 16 * 1024 * 1024 ? ConnectionConstraint.FileSize : r?.Segments.Values.Any(p => p.RetryAt.HasValue) == true ? ConnectionConstraint.Retry : j.Segments.Count(p => !p.Complete) < library.Settings.Connections ? ConnectionConstraint.Remainder : ConnectionConstraint.None,
                 Segments = j.Segments.Select((s, i) => { var p = r?.Segments.GetValueOrDefault(i); return new SegmentSnapshot(i + 1, s.Start, s.End, p?.Bytes ?? s.Committed, s.Complete, s.Complete ? DownloadPhase.Ready : j.State != DownloadState.Downloading ? DownloadPhase.Stopped : p?.Phase ?? DownloadPhase.Waiting, p?.Retry ?? 0, RetryRemaining(p)); }).ToArray()
             };
         }).ToArray();
@@ -197,7 +211,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
         if (!running.TryGetValue(id, out var r)) return null;
         r.Cancel.Cancel(); return r.Task;
     }
-    private static string Part(DownloadJob j, int i) => Path.Combine(j.PartsDirectory, $"{i:D3}.part");
+    private static string Part(DownloadJob j, int i) => Path.Combine(j.PartsDirectory, j.Segments[i].FileName);
     private void Save()
     {
         try { store.Save(library); PersistenceError = null; }
@@ -270,19 +284,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                 run.Phase = DownloadPhase.Transferring;
                 for (var i = 0; i < job.Segments.Count; i++) run.Segments[i] = new() { Bytes = job.Segments[i].Committed };
             }
-            using var siblings = CancellationTokenSource.CreateLinkedTokenSource(token);
-            Exception? failure = null;
-            var transfers = job.Segments.Select(async (s, i) =>
-            {
-                try { if (!s.Complete) await TransferAsync(job, i, run, siblings.Token); }
-                catch (Exception ex)
-                {
-                    if (ex is not OperationCanceledException) Interlocked.CompareExchange(ref failure, ex, null);
-                    siblings.Cancel(); throw;
-                }
-            }).ToArray();
-            try { await Task.WhenAll(transfers); }
-            catch { if (failure != null) throw failure; throw; }
+            await TransferQueueAsync(job, run, token);
             token.ThrowIfCancellationRequested();
             await AssembleAsync(job, token);
             lock (gate) { job.State = DownloadState.Completed; job.Diagnostic = null; Save(); }
@@ -355,9 +357,9 @@ public sealed partial class DownloadEngine : IAsyncDisposable
     private TimeSpan? RetryRemaining(Progress? p) => p?.RetryAt is { } at ? TimeSpan.FromSeconds(Math.Max(0, (p.Delay - clock.GetElapsedTime(at)).TotalSeconds)) : null;
     private async Task<T> RetryAsync<T>(Func<Task<T>> action, CancellationToken token, Progress progress)
     {
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = progress.Retry; ; attempt++)
         {
-            try { lock (gate) { progress.Phase = DownloadPhase.Transferring; progress.RetryAt = null; } return await action(); }
+            try { if (RetryRemaining(progress) is { } remaining && remaining > TimeSpan.Zero) await Task.Delay(remaining, clock, token); lock (gate) { progress.Phase = DownloadPhase.Transferring; progress.RetryAt = null; } return await action(); }
             catch (Exception ex) when (!token.IsCancellationRequested && attempt < 10 && ex is HttpRequestException or RetryException or OperationCanceledException)
             {
                 var delay = ex is RetryException { Delay: { } d } ? d : TimeSpan.FromSeconds(Math.Min(60, Math.Pow(2, attempt)));
@@ -369,17 +371,19 @@ public sealed partial class DownloadEngine : IAsyncDisposable
     }
     private async Task TransferAsync(DownloadJob job, int index, Running run, CancellationToken token)
     {
-        var segment = job.Segments[index];
+        Segment segment; Progress progress;
+        lock (gate) { segment = job.Segments[index]; progress = run.Segments[index]; }
+        var partPath = Path.Combine(job.PartsDirectory, segment.FileName);
         try
         {
             await RetryAsync(async () =>
             {
-                Interlocked.Increment(ref run.Connections);
+                await AcquireRequestAsync(job, run, progress, token);
                 try
                 {
                     if (segment.End != null && segment.Committed == segment.End - segment.Start + 1)
                     {
-                        if (!File.Exists(Part(job, index))) { using var empty = File.Create(Part(job, index)); empty.Flush(true); }
+                        if (!File.Exists(partPath)) { using var empty = File.Create(partPath); empty.Flush(true); }
                         lock (gate) { segment.Complete = true; Save(); }
                         return true;
                     }
@@ -408,7 +412,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                         throw new DecisionException(new(ProblemCode.FileChanged));
                     if (job.ETag == null && job.LastModified.HasValue && response.Content.Headers.LastModified is { } modified && modified != job.LastModified)
                         throw new DecisionException(new(ProblemCode.ModifiedChanged));
-                    await using var output = new FileStream(Part(job, index), FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read, 65536, FileOptions.Asynchronous);
+                    await using var output = new FileStream(partPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read, 65536, FileOptions.Asynchronous);
                     output.SetLength(offset); output.Position = offset;
                     await using var input = await response.Content.ReadAsStreamAsync(token);
                     var buffer = new byte[65536];
@@ -430,7 +434,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                                 throw new DecisionException(new(ProblemCode.TooMuchData));
                             await output.WriteAsync(buffer.AsMemory(0, read), token);
                             written += read; Interlocked.Add(ref run.Bytes, read); run.Meter.Add(read);
-                            lock (gate) run.Segments[index].Bytes = written;
+                            lock (gate) progress.Bytes = written;
                             if ((DateTime.UtcNow - checkpoint).TotalSeconds >= 2)
                             {
                                 output.Flush(true);
@@ -451,10 +455,10 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                         lock (gate) { segment.Committed = output.Length; Save(); }
                     }
                 }
-                finally { Interlocked.Decrement(ref run.Connections); }
-            }, token, run.Segments[index]);
+                finally { lock (gate) { run.Connections--; progress.RequestActive = false; } }
+            }, token, progress);
         }
-        finally { lock (gate) run.Segments[index].Phase = segment.Complete ? DownloadPhase.Ready : DownloadPhase.Stopped; }
+        finally { lock (gate) progress.Phase = segment.Complete ? DownloadPhase.Ready : DownloadPhase.Stopped; }
     }
     private async Task AssembleAsync(DownloadJob job, CancellationToken token)
     {
@@ -462,7 +466,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
         var assembled = Path.Combine(job.PartsDirectory, "assembled.tmp");
         await using (var output = new FileStream(assembled, FileMode.Create, FileAccess.Write, FileShare.None, 65536, FileOptions.Asynchronous))
         {
-            for (var i = 0; i < job.Segments.Count; i++)
+            foreach (var i in Enumerable.Range(0, job.Segments.Count).OrderBy(i => job.Segments[i].Start))
             {
                 await using var input = File.OpenRead(Part(job, i));
                 if (input.Length != job.Segments[i].Committed) throw new DecisionException(new(ProblemCode.SegmentSize));

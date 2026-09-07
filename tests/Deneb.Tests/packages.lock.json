@@ -123,8 +123,14 @@
       "deneb": {
         "type": "Project",
         "dependencies": {
-          "Deneb.Core": "[1.0.0, )",
+          "Deneb.Control": "[1.0.0, )",
           "Terminal.Gui": "[1.19.0, )"
+        }
+      },
+      "deneb.control": {
+        "type": "Project",
+        "dependencies": {
+          "Deneb.Core": "[1.0.0, )"
         }
       },
       "deneb.core": {

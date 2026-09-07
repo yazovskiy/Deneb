@@ -17,7 +17,10 @@ F3/F4 — move up/down; F5 — download next (does not resume)
 F6 — pause/resume all
 Enter — details; Delete — remove selected
 O — open; F7 — Finder; F8 — copy path
-F9 — clear completed; Q/Ctrl+C — quit</value></data>
+F9 — clear completed; Q/Ctrl+C — quit
+Q / Ctrl+C — close interface only
+F10 — stop Deneb
+F11 / F12 — reconnect / start after connection loss</value></data>
   <data name="File" xml:space="preserve"><value>File</value></data>
   <data name="State" xml:space="preserve"><value>State</value></data>
   <data name="Percent" xml:space="preserve"><value>%</value></data>
@@ -79,19 +82,21 @@ Server check: retry {9}/10 · wait {10}
   <data name="Save" xml:space="preserve"><value>Save</value></data>
   <data name="SettingsTitle" xml:space="preserve"><value>Settings (connections apply to new tasks)</value></data>
   <data name="ActiveFilesLabel" xml:space="preserve"><value>Simultaneous files:</value></data>
-  <data name="ConnectionsLabel" xml:space="preserve"><value>Connections per file:</value></data>
+  <data name="ConnectionsLabel" xml:space="preserve"><value>Max connections per file (1–16)</value></data>
   <data name="DestinationLabel" xml:space="preserve"><value>Download folder:</value></data>
   <data name="LanguageLabel" xml:space="preserve"><value>Language / Язык</value></data>
   <data name="English" xml:space="preserve"><value>English</value></data>
   <data name="Russian" xml:space="preserve"><value>Русский</value></data>
-  <data name="CliHelp" xml:space="preserve"><value>deneb — interactive download manager.
---state-dir PATH: use a separate library
---version: show version
---help: show this help
-F2: Language / Язык — English or Русский</value></data>
+  <data name="CliHelp" xml:space="preserve"><value>Deneb 2.0 — background download manager
+Usage: deneb [start|status|pause|resume|stop] [--state-dir PATH]
+Without a command: connect the interface, starting the background process if needed.
+Q / Ctrl+C: close interface only. F10: stop Deneb with confirmation.
+start: start background; status: inspect; pause/resume: global pause only; stop: save and stop.
+F2: maximum connections per file (applies live), language and settings.
+--help and --version never start or modify the store.</value></data>
   <data name="MissingStatePath" xml:space="preserve"><value>Specify a path after --state-dir.</value></data>
   <data name="InteractiveRequired" xml:space="preserve"><value>Run Deneb in an interactive terminal.</value></data>
-  <data name="Shutdown" xml:space="preserve"><value>Saving progress and stopping downloads…</value></data>
+  <data name="Shutdown" xml:space="preserve"><value>Interface closed. Background control: deneb status / deneb stop.</value></data>
   <data name="StartupError" xml:space="preserve"><value>Could not start Deneb: {0}</value></data>
   <data name="Error_EmptyInput" xml:space="preserve"><value>Add at least one HTTP/HTTPS URL.</value></data>
   <data name="Error_InvalidUrl" xml:space="preserve"><value>Enter a valid HTTP/HTTPS URL without credentials in the address.</value></data>
@@ -146,4 +151,25 @@ F2: Language / Язык — English or Русский</value></data>
   <data name="Phase_Waiting" xml:space="preserve"><value>Waiting</value></data>
   <data name="Phase_Assembling" xml:space="preserve"><value>Assembling</value></data>
   <data name="Phase_Verifying" xml:space="preserve"><value>Verifying file</value></data>
+  <data name="Error_Protocol" xml:space="preserve"><value>Invalid local control message or command.</value></data>
+  <data name="Error_Incompatible" xml:space="preserve"><value>The background process has an incompatible version. Stop it using its matching version before upgrading.</value></data>
+  <data name="Error_InterfaceOpen" xml:space="preserve"><value>An interface for this queue is already open.</value></data>
+  <data name="Error_DisconnectedControl" xml:space="preserve"><value>Connection lost. The last command may have completed; reconnect and check before repeating it.</value></data>
+  <data name="Error_BackgroundMissing" xml:space="preserve"><value>The background process is not running.</value></data>
+  <data name="Error_BackgroundTimeout" xml:space="preserve"><value>Timed out waiting for the background process. It may still be starting or stopping; check its status. An older Deneb may be holding the store lock.</value></data>
+  <data name="Error_UnsupportedPlatform" xml:space="preserve"><value>This file action is not supported on this platform yet.</value></data>
+  <data name="BackgroundStopped" xml:space="preserve"><value>Background process is stopped.</value></data>
+  <data name="BackgroundStatus" xml:space="preserve"><value>Background running: {0} tasks, {1} downloading. {2}</value></data>
+  <data name="StopTitle" xml:space="preserve"><value>Stop Deneb</value></data>
+  <data name="StopPrompt" xml:space="preserve"><value>Stop downloads and the background process? Progress will be saved.</value></data>
+  <data name="Stop" xml:space="preserve"><value>Stop</value></data>
+  <data name="DisconnectedBanner" xml:space="preserve"><value>Disconnected — F11: reconnect  F12: start and reconnect  Q: close</value></data>
+  <data name="ConnectionCount" xml:space="preserve"><value>{0}/{1}</value></data>
+  <data name="ConnectionDetail" xml:space="preserve"><value>Connections: {0}/{1}. {2} {3}</value></data>
+  <data name="ApplyingConnections" xml:space="preserve"><value>Applying new limit…</value></data>
+  <data name="Constraint_None" xml:space="preserve"><value>Maximum simultaneous requests.</value></data>
+  <data name="Constraint_Server" xml:space="preserve"><value>Server or validators do not allow parallel requests.</value></data>
+  <data name="Constraint_FileSize" xml:space="preserve"><value>File is smaller than 16 MiB.</value></data>
+  <data name="Constraint_Remainder" xml:space="preserve"><value>Not enough remaining data for more connections.</value></data>
+  <data name="Constraint_Retry" xml:space="preserve"><value>Some ranges are waiting to retry.</value></data>
 </root>

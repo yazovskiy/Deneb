@@ -17,6 +17,8 @@ public sealed class Settings
 }
 public sealed class Segment
 {
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public string FileName { get; set; } = Guid.NewGuid().ToString("N") + ".part";
     public long Start { get; set; }
     public long? End { get; set; }
     public long Committed { get; set; }
@@ -37,13 +39,15 @@ public sealed class DownloadJob
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? Error { get; set; } // v1/v2 input only
     public Problem? Diagnostic { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public Problem? ConnectionDiagnostic { get; set; }
     public string? FinalHash { get; set; }
     public List<Segment> Segments { get; set; } = [];
     public string PartsDirectory => Path.Combine(Destination, $".deneb-{Id:N}");
 }
 public sealed class Library
 {
-    public int Version { get; set; } = 3;
+    public int Version { get; set; } = 4;
     public bool GloballyPaused { get; set; }
     public Settings Settings { get; set; } = new();
     public List<DownloadJob> Jobs { get; set; } = [];
@@ -56,6 +60,11 @@ public sealed record Snapshot(Guid Id, string Name, DownloadState State, long By
     public IReadOnlyList<SegmentSnapshot> Segments { get; init; } = [];
     public int Retry { get; init; }
     public TimeSpan? RetryIn { get; init; }
+    public int ConnectionLimit { get; init; }
+    public bool ApplyingConnections { get; init; }
+    public ConnectionConstraint ConnectionConstraint { get; init; }
+    public Problem? ConnectionError { get; init; }
 }
+public enum ConnectionConstraint { None, Server, FileSize, Remainder, Retry }
 public sealed record SegmentSnapshot(int Number, long Start, long? End, long Bytes, bool Complete, DownloadPhase Phase, int Retry, TimeSpan? RetryIn);
 public sealed record BatchResult(IReadOnlyList<Guid> Processed, IReadOnlyList<Guid> Skipped, IReadOnlyList<Guid> Failed);

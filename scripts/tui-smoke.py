@@ -93,7 +93,7 @@ with tempfile.TemporaryDirectory(prefix="deneb-tui-") as root:
         before_help = {p.name: p.read_bytes() for p in Path(root).glob("state.json*")}
         help_result = subprocess.run([binary, "--state-dir", root, "--help"], capture_output=True, text=True, timeout=10)
         assert help_result.returncode == 0
-        assert tr("interactive download manager", "интерактивный менеджер загрузок") in help_result.stdout
+        assert tr("background download manager", "фоновый менеджер загрузок") in help_result.stdout
         assert before_help == {p.name: p.read_bytes() for p in Path(root).glob("state.json*")}
         os.write(master, b"\x1bOP")
         wait_for(tr("Deneb keys", "Клавиши Deneb"))
@@ -208,12 +208,16 @@ with tempfile.TemporaryDirectory(prefix="deneb-tui-") as root:
         os.write(master, b"\x1b[2~")
         pump(0.2)
         os.write(master, b"q")
-        wait_for(tr("Saving progress", "Сохраняю прогресс"))
+        wait_for(tr("Interface closed", "Интерфейс закрыт"))
         process.wait(timeout=10)
         assert process.returncode == 0
         saved = json.loads(Path(root, "state.json").read_text())
         assert len(saved["Jobs"]) == 2
-        assert sorted(job["State"] for job in saved["Jobs"]) == [0, 2], saved
+        assert any(job["State"] == 2 for job in saved["Jobs"]), saved
+        active_before = sum(s["Committed"] for j in saved["Jobs"] if j["State"] != 2 for s in j["Segments"])
+        time.sleep(2.5)
+        background = json.loads(Path(root, "state.json").read_text())
+        assert sum(s["Committed"] for j in background["Jobs"] if j["State"] != 2 for s in j["Segments"]) > active_before
         assert any(s["Committed"] > 0 for j in saved["Jobs"] for s in j["Segments"])
         os.close(master)
         master, slave = pty.openpty()
@@ -240,7 +244,7 @@ with tempfile.TemporaryDirectory(prefix="deneb-tui-") as root:
         os.write(master, b"\t\r")
         pump(0.5)
         os.write(master, b"q")
-        wait_for(tr("Saving progress", "Сохраняю прогресс"))
+        wait_for(tr("Interface closed", "Интерфейс закрыт"))
         process.wait(timeout=10)
         assert process.returncode == 0
         assert not json.loads(Path(root, "state.json").read_text())["Jobs"]
@@ -251,5 +255,6 @@ with tempfile.TemporaryDirectory(prefix="deneb-tui-") as root:
             os.killpg(process.pid, signal.SIGTERM)
             process.wait(timeout=5)
         os.close(master)
+        subprocess.run([binary, "stop", "--state-dir", root], capture_output=True, timeout=35)
         server.shutdown()
         server.server_close()

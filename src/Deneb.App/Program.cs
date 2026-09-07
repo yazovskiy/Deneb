@@ -1,18 +1,53 @@
 using System.Data;
 using Deneb.Core;
+using Deneb.Control;
+using Command = Deneb.Control.Command;
 using Terminal.Gui;
 using Deneb.App;
 
 var stateIndex = Array.IndexOf(args, "--state-dir");
 var stateDirectory = stateIndex >= 0 && stateIndex + 1 < args.Length ? args[stateIndex + 1] : null;
+if (args.Contains("--background"))
+{
+    try
+    {
+        BackgroundLauncher.Detach();
+        using var stop = new CancellationTokenSource();
+        using var termination = OperatingSystem.IsWindows() ? null : System.Runtime.InteropServices.PosixSignalRegistration.Create(System.Runtime.InteropServices.PosixSignal.SIGTERM, context => { context.Cancel = true; stop.Cancel(); });
+        await new ControlServer(new LocalEndpoint(stateDirectory)).RunAsync(stop.Token);
+    }
+    catch (Exception ex) { Environment.ExitCode = 20 + (int)Problem.FromException(ex).Code; }
+    return;
+}
 var localization = new Localization(StateStore.ReadLanguage(stateDirectory));
-if (args.Contains("--version")) { Console.WriteLine("Deneb 1.2.0"); return; }
+if (args.Contains("--version")) { Console.WriteLine("Deneb 2.0.0"); return; }
 if (stateIndex >= 0 && stateDirectory == null) { Console.Error.WriteLine(localization.Text("MissingStatePath")); Environment.ExitCode = 2; return; }
 if (args.Contains("--help")) { Console.WriteLine(localization.Text("CliHelp")); return; }
-if (Console.IsInputRedirected) { Console.Error.WriteLine(localization.Text("InteractiveRequired")); Environment.ExitCode = 2; return; }
 try
 {
-    await using var engine = new DownloadEngine(stateDirectory);
+    var commands = args.Where((_, i) => i != stateIndex && (stateIndex < 0 || i != stateIndex + 1)).ToArray();
+    var command = commands.FirstOrDefault();
+    if (commands.Length > 1 || command != null && command is not ("start" or "status" or "pause" or "resume" or "stop"))
+        throw new ProblemException(ProblemCode.Protocol);
+    var endpoint = new LocalEndpoint(stateDirectory);
+    if (command != null)
+    {
+        ControlClient client;
+        try { client = await BackgroundLauncher.ConnectOrStartAsync(endpoint, false, command == "start"); }
+        catch (ProblemException ex) when (ex.Problem.Code == ProblemCode.BackgroundMissing && command is "stop" or "status")
+        { Console.WriteLine(localization.Text("BackgroundStopped")); return; }
+        await using (client)
+        {
+            localization.SetLanguage(client.State.Settings.Language);
+            if (command is "pause" or "resume" or "stop")
+                await client.SendAsync(new() { Command = command == "pause" ? Command.PauseAll : command == "resume" ? Command.ResumeAll : Command.Stop });
+            if (command == "stop") { await BackgroundLauncher.WaitStoppedAsync(endpoint); Console.WriteLine(localization.Text("BackgroundStopped")); }
+            else Console.WriteLine(localization.Text("BackgroundStatus", client.State.Jobs.Length, client.State.Jobs.Count(j => j.State == DownloadState.Downloading), client.State.GloballyPaused ? localization.Text("GlobalBanner") : ""));
+        }
+        return;
+    }
+    if (Console.IsInputRedirected) { Console.Error.WriteLine(localization.Text("InteractiveRequired")); Environment.ExitCode = 2; return; }
+    await using var engine = new RemoteEngine(await BackgroundLauncher.ConnectOrStartAsync(endpoint, true, true), endpoint);
     localization.SetLanguage(engine.GetSettings().Language);
     Application.Init();
     try { new DenebUi(engine, localization).Run(); }
@@ -25,7 +60,7 @@ catch (Exception ex)
     Environment.ExitCode = 1;
 }
 
-sealed class DenebUi(DownloadEngine engine, Localization localization)
+sealed class DenebUi(RemoteEngine engine, Localization localization)
 {
     private readonly TableView table = new() { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(2), FullRowSelect = true };
     private readonly Label summary = new() { X = 0, Y = Pos.AnchorEnd(2), Width = Dim.Fill(), Height = 1 };
@@ -34,6 +69,8 @@ sealed class DenebUi(DownloadEngine engine, Localization localization)
     private IReadOnlyList<Snapshot> rows = [];
     private bool modal;
     private bool busy;
+    private bool polling;
+    private bool closed;
     private readonly HashSet<Guid> marked = [];
     private BatchResult? notice;
     private Window? window;
@@ -52,6 +89,7 @@ sealed class DenebUi(DownloadEngine engine, Localization localization)
         {
             if (modal || busy) return;
             var key = e.KeyEvent.Key;
+            if (!engine.Connected && key is not (Key.q or Key.Q or Key.F1 or Key.F11 or Key.F12) && key != (Key.CtrlMask | Key.c)) return;
             switch (key)
             {
                 case Key.a: case Key.A: Add(); break;
@@ -60,14 +98,17 @@ sealed class DenebUi(DownloadEngine engine, Localization localization)
                 case Key.DeleteChar: case Key.Delete: Remove(); break;
                 case Key.F2: Settings(); break;
                 case Key.InsertChar: if (Selected is { } mark && !marked.Remove(mark)) marked.Add(mark); Refresh(); break;
-                case Key.F3: if (Selected is { } up) engine.Move(up, -1); Refresh(); break;
-                case Key.F4: if (Selected is { } down) engine.Move(down, 1); Refresh(); break;
-                case Key.F5: if (Selected is { } next) engine.DownloadNext(next); Refresh(); break;
-                case Key.F6: if (engine.GloballyPaused) engine.ResumeAll(); else Work(engine.PauseAllAsync); break;
+                case Key.F3: if (Selected is { } up) Work(() => engine.MoveAsync(up, -1)); break;
+                case Key.F4: if (Selected is { } down) Work(() => engine.MoveAsync(down, 1)); break;
+                case Key.F5: if (Selected is { } next) Work(() => engine.DownloadNextAsync(next)); break;
+                case Key.F6: if (engine.GloballyPaused) Work(() => engine.ResumeAllAsync()); else Work(() => engine.PauseAllAsync()); break;
                 case Key.o: case Key.O: FileAction("open"); break;
                 case Key.F7: FileAction("reveal"); break;
                 case Key.F8: FileAction("copy"); break;
-                case Key.F9: Dialog(() => { if (MessageBox.Query(T("ClearTitle"), T("ClearPrompt"), T("Cancel"), T("Clear")) == 1) Report(engine.ClearCompleted()); }); break;
+                case Key.F9: Dialog(() => { if (MessageBox.Query(T("ClearTitle"), T("ClearPrompt"), T("Cancel"), T("Clear")) == 1) Work(async () => Report(await engine.ClearCompletedAsync())); }); break;
+                case Key.F10: Dialog(() => { if (MessageBox.Query(T("StopTitle"), T("StopPrompt"), T("Cancel"), T("Stop")) == 1) Work(async () => { await engine.StopAsync(); Application.MainLoop.Invoke(() => Application.RequestStop()); }); }); break;
+                case Key.F11: if (!engine.Connected) Work(() => engine.ReconnectAsync(false)); break;
+                case Key.F12: if (!engine.Connected) Work(() => engine.ReconnectAsync(true)); break;
                 case Key.F1: Dialog(() => MessageBox.Query(T("HelpTitle"), T("Help"), T("Close"))); break;
                 case Key.q: case Key.Q: case Key.CtrlMask | Key.c: Application.RequestStop(); break;
                 default: return;
@@ -75,10 +116,21 @@ sealed class DenebUi(DownloadEngine engine, Localization localization)
             e.Handled = true;
         };
         Console.CancelKeyPress += OnCancel;
-        var timer = Application.MainLoop.AddTimeout(TimeSpan.FromMilliseconds(250), _ => { Refresh(); return true; });
+        var timer = Application.MainLoop.AddTimeout(TimeSpan.FromMilliseconds(250), _ => { Poll(); Refresh(); return true; });
         Refresh();
         try { Application.Run(); }
-        finally { Application.MainLoop.RemoveTimeout(timer); Console.CancelKeyPress -= OnCancel; }
+        finally { closed = true; Application.MainLoop.RemoveTimeout(timer); Console.CancelKeyPress -= OnCancel; }
+    }
+    private void Poll()
+    {
+        if (polling || busy || !engine.Connected) return;
+        polling = true;
+        _ = Task.Run(async () =>
+        {
+            try { await engine.PollAsync(); }
+            catch (ProblemException) { }
+            finally { if (!closed) Application.MainLoop.Invoke(() => { polling = false; Refresh(); }); }
+        });
     }
     private static void OnCancel(object? sender, ConsoleCancelEventArgs e) { e.Cancel = true; Application.MainLoop.Invoke(() => Application.RequestStop()); }
     private Guid? Selected => table.SelectedRow >= 0 && table.SelectedRow < rows.Count ? rows[table.SelectedRow].Id : null;
@@ -96,7 +148,7 @@ sealed class DenebUi(DownloadEngine engine, Localization localization)
         {
             var percent = s.Total is > 0 ? localization.Number(100.0 * s.Bytes / s.Total.Value) : s.State == DownloadState.Completed ? "100" : "—";
             var eta = Duration(s.Eta);
-            data.Rows.Add((marked.Contains(s.Id) ? "✓ " : "") + localization.Name(s), localization.Phase(s.Phase), percent, $"{Size(s.Bytes)} / {(s.Total.HasValue ? Size(s.Total.Value) : "?")}", localization.Rate(s.Speed), eta, s.Connections.ToString(localization.Culture));
+            data.Rows.Add((marked.Contains(s.Id) ? "✓ " : "") + localization.Name(s), localization.Phase(s.Phase), percent, $"{Size(s.Bytes)} / {(s.Total.HasValue ? Size(s.Total.Value) : "?")}", localization.Rate(s.Speed), eta, T("ConnectionCount", s.Connections, s.ConnectionLimit));
         }
         table.Table = data;
         table.Style.ColumnStyles.Clear();
@@ -104,11 +156,11 @@ sealed class DenebUi(DownloadEngine engine, Localization localization)
         var index = selected.HasValue ? rows.ToList().FindIndex(r => r.Id == selected) : 0;
         if (rows.Count > 0) table.SetSelection(0, Math.Max(0, index), false);
         table.RowOffset = rowOffset; table.ColumnOffset = columnOffset;
-        summary.Text = engine.PersistenceError != null ? localization.Error(engine.PersistenceError) : busy ? T("Busy") : T("Summary", engine.GloballyPaused ? T("GlobalBanner") : "", rows.Count, marked.Count, localization.Rate(rows.Sum(r => r.Speed)), notice == null ? "" : T("Batch", notice.Processed.Count, notice.Skipped.Count, notice.Failed.Count));
+        summary.Text = !engine.Connected ? T("DisconnectedBanner") : engine.PersistenceError != null ? localization.Error(engine.PersistenceError) : busy ? T("Busy") : T("Summary", engine.GloballyPaused ? T("GlobalBanner") : "", rows.Count, marked.Count, localization.Rate(rows.Sum(r => r.Speed)), notice == null ? "" : T("Batch", notice.Processed.Count, notice.Skipped.Count, notice.Failed.Count));
         table.SetNeedsDisplay();
     }
     private string Size(long n) => localization.Size(n);
-    private void Dialog(Action action) { modal = true; try { action(); } finally { modal = false; Refresh(); } }
+    private void Dialog(Action action) { modal = true; try { action(); } catch (Exception ex) { Error(ex); } finally { modal = false; Refresh(); } }
     private void Error(Exception ex) => MessageBox.ErrorQuery(T("ErrorTitle"), localization.Error(ex), T("Ok"));
     private void Work(Func<Task> action)
     {
@@ -117,7 +169,7 @@ sealed class DenebUi(DownloadEngine engine, Localization localization)
         {
             Exception? error = null;
             try { await action(); } catch (Exception ex) { error = ex; }
-            Application.MainLoop.Invoke(() => { busy = false; if (error != null) Dialog(() => Error(error)); Refresh(); });
+            if (!closed) Application.MainLoop.Invoke(() => { busy = false; if (error != null) Dialog(() => Error(error)); Refresh(); });
         });
     }
     private void Add() => Dialog(() =>
@@ -141,7 +193,7 @@ sealed class DenebUi(DownloadEngine engine, Localization localization)
                 if (!Path.IsPathFullyQualified(dest)) throw new ProblemException(ProblemCode.AbsolutePath);
                 var preview = string.Join("\n\n", parsed.Select(p => $"{(string.IsNullOrWhiteSpace(custom) ? p.Name ?? T("AutomaticName") : custom)}\n{p.Url}"));
                 if (MessageBox.Query(T("AddConfirm"), preview, T("Add"), T("Back")) != 0) return;
-                foreach (var item in parsed) engine.Add(item, dest, string.IsNullOrWhiteSpace(custom) ? null : custom);
+                Work(async () => { foreach (var item in parsed) await engine.AddAsync(item, dest, string.IsNullOrWhiteSpace(custom) ? null : custom); });
                 Application.RequestStop();
             }
             catch (Exception ex) { Error(ex); }
@@ -152,7 +204,7 @@ sealed class DenebUi(DownloadEngine engine, Localization localization)
     {
         var ids = Targets;
         if (rows.Any(s => ids.Contains(s.Id) && s.State is DownloadState.Downloading or DownloadState.Queued)) Work(async () => Report(await engine.PauseManyAsync(ids)));
-        else Report(engine.ResumeMany(ids));
+        else Work(async () => Report(await engine.ResumeManyAsync(ids)));
     }
     private string Duration(TimeSpan? time) => localization.Duration(time);
     private void FileAction(string action)
@@ -186,9 +238,9 @@ sealed class DenebUi(DownloadEngine engine, Localization localization)
             {
                 var s = engine.Snapshots().FirstOrDefault(s => s.Id == id); if (s == null) return;
                 var top = info.TopRow; var left = info.LeftColumn; var cursor = info.CursorPosition;
-                var detailText = T("Details", localization.Name(s), localization.Phase(s.Phase), Size(s.Bytes), s.Total.HasValue ? Size(s.Total.Value) : T("Unknown"), localization.Rate(s.Speed), Duration(s.Eta), s.Connections, s.Source, s.Target, s.Retry, Duration(s.RetryIn), localization.Error(s.Error));
+                var detailText = T("ConnectionDetail", s.Connections, s.ConnectionLimit, s.ApplyingConnections ? T("ApplyingConnections") : T("Constraint_" + s.ConnectionConstraint), localization.Error(s.ConnectionError)) + "\n" + T("Details", localization.Name(s), localization.Phase(s.Phase), Size(s.Bytes), s.Total.HasValue ? Size(s.Total.Value) : T("Unknown"), localization.Rate(s.Speed), Duration(s.Eta), s.Connections, s.Source, s.Target, s.Retry, Duration(s.RetryIn), localization.Error(s.Error));
                 if (info.Text.ToString() != detailText) { info.Text = detailText; info.CursorPosition = cursor; info.TopRow = top; info.LeftColumn = left; }
-                restart.Enabled = s.State == DownloadState.NeedsDecision; open.Enabled = reveal.Enabled = copy.Enabled = s.State == DownloadState.Completed;
+                restart.Enabled = s.State == DownloadState.NeedsDecision; open.Enabled = reveal.Enabled = copy.Enabled = s.State == DownloadState.Completed && OperatingSystem.IsMacOS();
                 var data = new DataTable(); foreach (var c in new[] { T("Number"), T("Range"), T("Volume"), "%", T("State"), T("Retry"), T("RetryIn") }) data.Columns.Add(c);
                 foreach (var p in s.Segments) { var total = p.End - p.Start + 1; data.Rows.Add(p.Number.ToString(localization.Culture), $"{p.Start.ToString(localization.Culture)}–{p.End?.ToString(localization.Culture)}", $"{Size(p.Bytes)} / {(total.HasValue ? Size(total.Value) : "?")}", total > 0 ? localization.Number(100d * p.Bytes / total.Value) : "—", localization.Phase(p.Phase), T("RetryFormat", p.Retry), Duration(p.RetryIn)); }
                 var row = segments.SelectedRow; var column = segments.SelectedColumn; var offset = segments.RowOffset; var horizontal = segments.ColumnOffset; segments.Table = data;
@@ -201,9 +253,13 @@ sealed class DenebUi(DownloadEngine engine, Localization localization)
     private void Replace()
     {
         if (Selected is not { } id || rows.First(r => r.Id == id).State == DownloadState.Completed) return;
+        Work(async () => { var url = await engine.GetUrlAsync(id); Application.MainLoop.Invoke(() => ReplaceDialog(id, url)); });
+    }
+    private void ReplaceDialog(Guid id, string currentUrl)
+    {
         Dialog(() =>
         {
-            var field = new TextField(engine.GetUrl(id)) { X = 1, Y = 1, Width = Dim.Fill(1) };
+            var field = new TextField(currentUrl) { X = 1, Y = 1, Width = Dim.Fill(1) };
             var ok = new Button(T("Replace")); var cancel = new Button(T("Cancel"));
             var dialog = new Dialog(T("ReplaceTitle"), 90, 7, ok, cancel);
             dialog.Add(field); cancel.Clicked += () => Application.RequestStop();
@@ -230,8 +286,8 @@ sealed class DenebUi(DownloadEngine engine, Localization localization)
     private void Settings() => Dialog(() =>
     {
         var settings = engine.GetSettings();
-        var files = new TextField(settings.ActiveFiles.ToString(localization.Culture)) { X = 26, Y = 1, Width = 6 };
-        var connections = new TextField(settings.Connections.ToString(localization.Culture)) { X = 26, Y = 3, Width = 6 };
+        var files = new TextField(settings.ActiveFiles.ToString(localization.Culture)) { X = 43, Y = 1, Width = 6 };
+        var connections = new TextField(settings.Connections.ToString(localization.Culture)) { X = 43, Y = 3, Width = 6 };
         var folder = new TextField(settings.Destination) { X = 1, Y = 6, Width = Dim.Fill(1) };
         var ok = new Button(T("Save")); var cancel = new Button(T("Cancel"));
         var dialog = new Dialog(T("SettingsTitle"), 90, 16, ok, cancel);
@@ -245,8 +301,10 @@ sealed class DenebUi(DownloadEngine engine, Localization localization)
             try
             {
                 if (!int.TryParse(files.Text.ToString(), System.Globalization.NumberStyles.Integer, localization.Culture, out var f) || !int.TryParse(connections.Text.ToString(), System.Globalization.NumberStyles.Integer, localization.Culture, out var c)) throw new ProblemException(ProblemCode.IntegerSettings);
-                engine.SetSettings(new() { ActiveFiles = f, Connections = c, Destination = folder.Text.ToString() ?? "", Language = language.SelectedItem == 1 ? "ru" : "en" });
-                localization.SetLanguage(engine.GetSettings().Language); Application.RequestStop();
+                var updated = new Settings { ActiveFiles = f, Connections = c, Destination = folder.Text.ToString() ?? "", Language = language.SelectedItem == 1 ? "ru" : "en" };
+                updated.Validate();
+                Work(async () => { await engine.SetSettingsAsync(updated); Application.MainLoop.Invoke(() => { localization.SetLanguage(engine.GetSettings().Language); Refresh(); }); });
+                Application.RequestStop();
             }
             catch (Exception ex) { Error(ex); }
         };
