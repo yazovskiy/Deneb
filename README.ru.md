@@ -7,6 +7,7 @@
 <p align="center">
   <a href="https://github.com/yazovskiy/Deneb/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/yazovskiy/Deneb?color=8b9cff&style=flat-square"></a>
   <img alt="macOS Apple Silicon" src="https://img.shields.io/badge/macOS-Apple%20Silicon-111827?style=flat-square&logo=apple">
+  <a href="https://github.com/yazovskiy/Deneb/releases/tag/v2.0.0-experimental.1"><img alt="Windows / Linux experimental" src="https://img.shields.io/badge/Windows%20%2F%20Linux-experimental-fbbf24?style=flat-square"></a>
   <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-7dd3fc?style=flat-square"></a>
 </p>
@@ -37,7 +38,17 @@
 
 Автозапуск при входе, предотвращение сна и автоматический перезапуск после сбоя не включены. Фон работает до явной остановки, даже при пустой очереди.
 
-**Поддержка платформ:** macOS ARM64 — стабильная поддерживаемая сборка. Windows и Linux — экспериментальные платформы для сборки из исходников: ядро и IPC включены в CI, но терминальный интерфейс и системные интеграции ещё не прошли полную приёмку. Готовые бинарники Windows/Linux в этом релизе не распространяются.
+## Скачать и выбрать платформу
+
+| Платформа | Статус | Автономная сборка |
+|---|---|---|
+| macOS Apple Silicon (ARM64) | **Стабильная** | [tar.gz](https://github.com/yazovskiy/Deneb/releases/latest/download/deneb-osx-arm64.tar.gz) |
+| Windows x64 | **Экспериментальная — pre-release** | [zip](https://github.com/yazovskiy/Deneb/releases/download/v2.0.0-experimental.1/deneb-win-x64-experimental.zip) |
+| Linux x64 (glibc) | **Экспериментальная — pre-release** | [tar.gz](https://github.com/yazovskiy/Deneb/releases/download/v2.0.0-experimental.1/deneb-linux-x64-experimental.tar.gz) |
+
+Windows/Linux доступны в [отдельном предварительном релизе](https://github.com/yazovskiy/Deneb/releases/tag/v2.0.0-experimental.1); стабильный macOS-релиз остаётся Latest. Автотесты не заменяют полную приёмку терминального интерфейса. **Открытие файла, показ в файловом менеджере и копирование пути пока работают только на macOS.** Сборок Windows/Linux ARM64, Intel Mac и Alpine/musl нет.
+
+Сначала распакуйте архив: Linux — `./deneb`, Windows PowerShell — `.\deneb.exe` (рекомендуется Windows Terminal). Установка .NET не нужна; для Linux нужны системные зависимости runtime. В экспериментальные архивы включён `EXPERIMENTAL.md` с ограничениями, а к релизу приложены SHA-256. Для пробы используйте отдельный `--state-dir`. Бинарники не подписаны; не отключайте защиту системы целиком.
 
 ## Язык интерфейса
 
@@ -98,7 +109,7 @@ tar -xzf deneb-osx-arm64.tar.gz
 ## Ваши файлы остаются вашими
 
 - Загрузки по умолчанию: `~/Downloads/Deneb`.
-- Очередь и настройки: `~/Library/Application Support/Deneb`.
+- Очередь и настройки: macOS — `~/Library/Application Support/Deneb`; Windows — `%LOCALAPPDATA%\Deneb`; Linux — локальный каталог данных .NET плюс `Deneb` (обычно `~/.local/share/Deneb`). Можно переопределить через `--state-dir`.
 - Существующие файлы не перезаписываются. Удаление задачи по умолчанию сохраняет части; их удаление требует отдельного подтверждения.
 - При миграции с 1.0/1.1 сохраняется `state.json.v1.bak` / `state.json.v2.bak`. Закройте старую версию перед запуском новой.
 - Для сборки сегментов временно требуется место примерно под два размера файла.

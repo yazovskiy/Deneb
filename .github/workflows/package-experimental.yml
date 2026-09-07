@@ -1,0 +1,66 @@
+name: Prepare experimental Windows and Linux assets
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing experimental tag with a draft pre-release
+        required: true
+        default: v2.0.0-experimental.1
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            binary: deneb.exe
+            extension: zip
+          - os: ubuntu-latest
+            rid: linux-x64
+            binary: deneb
+            extension: tar.gz
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/deneb-dotnet
+        with:
+          dotnet-version: '10.0.300'
+      - name: Require draft pre-release
+        run: |
+          $release = gh release view $env:RELEASE_TAG --json isDraft,isPrerelease | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or !$release.isDraft -or !$release.isPrerelease) { throw 'Expected draft pre-release' }
+      - run: dotnet restore --locked-mode
+      - run: dotnet test --no-restore
+      - run: dotnet publish src/Deneb.App -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:RestoreLockedMode=true -o artifacts/${{ matrix.rid }}
+      - run: python scripts/package-experimental.py ${{ matrix.rid }}
+      - name: Verify extracted binary and localized resources
+        run: ./scripts/packaged-cli-smoke.ps1 artifacts/experimental/verify-${{ matrix.rid }}/${{ matrix.binary }}
+      - name: Linux EN/RU terminal scenarios
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          python3 scripts/tui-smoke.py artifacts/experimental/verify-linux-x64/deneb en
+          python3 scripts/tui-smoke.py artifacts/experimental/verify-linux-x64/deneb ru
+      - run: git diff --exit-code -- '**/packages*.lock.json'
+      - name: Upload only to draft pre-release
+        run: |
+          $release = gh release view $env:RELEASE_TAG --json isDraft,isPrerelease | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or !$release.isDraft -or !$release.isPrerelease) { throw 'Expected draft pre-release' }
+          gh release upload $env:RELEASE_TAG artifacts/experimental/deneb-${{ matrix.rid }}-experimental.${{ matrix.extension }} artifacts/experimental/SHA256SUMS-${{ matrix.rid }}.txt --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Upload failed' }

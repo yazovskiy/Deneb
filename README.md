@@ -7,6 +7,7 @@
 <p align="center">
   <a href="https://github.com/yazovskiy/Deneb/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/yazovskiy/Deneb?color=8b9cff&style=flat-square"></a>
   <img alt="macOS Apple Silicon" src="https://img.shields.io/badge/macOS-Apple%20Silicon-111827?style=flat-square&logo=apple">
+  <a href="https://github.com/yazovskiy/Deneb/releases/tag/v2.0.0-experimental.1"><img alt="Windows / Linux experimental" src="https://img.shields.io/badge/Windows%20%2F%20Linux-experimental-fbbf24?style=flat-square"></a>
   <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-7dd3fc?style=flat-square"></a>
 </p>
@@ -38,7 +39,17 @@ All commands accept `--state-dir PATH`. One interface per store is allowed; CLI 
 
 If the connection is lost, **F11** reconnects; **F12** starts the background process if absent and reconnects. Commands with uncertain results are not automatically replayed.
 
-**Platform support:** macOS ARM64 is the stable, supported binary release. Windows and Linux are experimental source targets: core and IPC tests are included in CI, but terminal UX and desktop integration are not fully accepted. No Windows/Linux binaries are distributed in this release.
+## Downloads and platform support
+
+| Platform | Status | Self-contained download |
+|---|---|---|
+| macOS Apple Silicon (ARM64) | **Stable** | [tar.gz](https://github.com/yazovskiy/Deneb/releases/latest/download/deneb-osx-arm64.tar.gz) |
+| Windows x64 | **Experimental — pre-release** | [zip](https://github.com/yazovskiy/Deneb/releases/download/v2.0.0-experimental.1/deneb-win-x64-experimental.zip) |
+| Linux x64 (glibc) | **Experimental — pre-release** | [tar.gz](https://github.com/yazovskiy/Deneb/releases/download/v2.0.0-experimental.1/deneb-linux-x64-experimental.tar.gz) |
+
+Windows/Linux builds are published in a [separate pre-release](https://github.com/yazovskiy/Deneb/releases/tag/v2.0.0-experimental.1); the stable macOS release remains Latest. Automated checks do not replace full terminal UX acceptance. **Open file, reveal in file manager and copy path are currently macOS-only.** Windows/Linux ARM64, Intel Macs and Alpine/musl builds are not included.
+
+Extract the archive before running: `./deneb` on Linux or `.\deneb.exe` in Windows PowerShell (Windows Terminal recommended). No .NET installation is needed; OS-level .NET runtime dependencies are still required on Linux. Experimental archives include `EXPERIMENTAL.md` with limitations; SHA-256 files are attached to their pre-release. Use a separate `--state-dir` when trying them. Binaries are unsigned; do not disable system security globally.
 
 ## Interface language
 
@@ -100,7 +111,7 @@ Mac keyboards may require **Fn** for function keys. If Insert is unavailable, co
 ## Your files stay yours
 
 - Default destination: `~/Downloads/Deneb`.
-- Queue and settings: `~/Library/Application Support/Deneb`.
+- Queue and settings: `~/Library/Application Support/Deneb` on macOS; `%LOCALAPPDATA%\Deneb` on Windows; the .NET local application data directory plus `Deneb` on Linux (normally `~/.local/share/Deneb`). Override with `--state-dir`.
 - Existing files are never overwritten. Removing tasks preserves partial data by default; deleting it requires separate confirmation.
 - Stop the old version before upgrading (close 1.x; use `deneb stop` for 2.x). Migration preserves `state.json.v1.bak`, `.v2.bak` or `.v3.bak` without renaming existing parts.
 - A metadata backup alone does **not** make rollback to 1.2 safe after ranges have been split. Do not open a v4 store with an older binary.

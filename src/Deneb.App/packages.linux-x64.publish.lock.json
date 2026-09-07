@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[10.0.8, )",
+        "resolved": "10.0.8",
+        "contentHash": "dVbSXGIFNR5nZcv2tOLoWI+a9T4jtFd77IYjuND+QVe360qWgAF7H0WtoopYhRw/+SgpGUTyrkrh+65+ClNnfw=="
+      },
+      "Terminal.Gui": {
+        "type": "Direct",
+        "requested": "[1.19.0, )",
+        "resolved": "1.19.0",
+        "contentHash": "Pgdlgout2KsBX+tO4t4mmg3YAL0vhT8falV4T77ohuQECel0q9agGKDWEfB0Cs1EnsGlrs7kCxocwphguKOVww==",
+        "dependencies": {
+          "NStack.Core": "1.1.1",
+          "System.Management": "9.0.4"
+        }
+      },
+      "NStack.Core": {
+        "type": "Transitive",
+        "resolved": "1.1.1",
+        "contentHash": "5LhlYsmAe3A55zl8xCSD7AbuhDqZODpsfdMGgtygeBlHZmlb0tHmK5/PeKODnwYUhC6EbL2qHKGskPNvpY+z3w=="
+      },
+      "System.CodeDom": {
+        "type": "Transitive",
+        "resolved": "9.0.4",
+        "contentHash": "aJdv7Z87PoPW8ijvGIincocooYRbH3Umtlz7OrJKf6GDInbdu1bvk5X1fFlmbl7WP+9ntoIBd7NjKz+siVFdHA=="
+      },
+      "System.Management": {
+        "type": "Transitive",
+        "resolved": "9.0.4",
+        "contentHash": "MfY9+SrkSvchAoFiChTkhQYCAjBaQQ9u3LwiKmho7oTbujucnxCzORlPgLhId/ChLSptsQ/1UmtPGLZaKYVdsA==",
+        "dependencies": {
+          "System.CodeDom": "9.0.4"
+        }
+      },
+      "deneb.control": {
+        "type": "Project",
+        "dependencies": {
+          "Deneb.Core": "[1.0.0, )"
+        }
+      },
+      "deneb.core": {
+        "type": "Project"
+      }
+    },
+    "net10.0/linux-x64": {
+      "System.Management": {
+        "type": "Transitive",
+        "resolved": "9.0.4",
+        "contentHash": "MfY9+SrkSvchAoFiChTkhQYCAjBaQQ9u3LwiKmho7oTbujucnxCzORlPgLhId/ChLSptsQ/1UmtPGLZaKYVdsA==",
+        "dependencies": {
+          "System.CodeDom": "9.0.4"
+        }
+      }
+    }
+  }
+}
