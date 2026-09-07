@@ -36,6 +36,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.tag }}
+      - name: Get current verification harness (product remains at tag)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: .release-checks
+          sparse-checkout: scripts/packaged-cli-smoke.py
+          sparse-checkout-cone-mode: false
       - uses: actions/setup-dotnet@v4
         env:
           DOTNET_INSTALL_DIR: ${{ runner.temp }}/deneb-dotnet
@@ -50,7 +57,7 @@ jobs:
       - run: dotnet publish src/Deneb.App -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:RestoreLockedMode=true -o artifacts/${{ matrix.rid }}
       - run: python scripts/package-experimental.py ${{ matrix.rid }}
       - name: Verify extracted binary and localized resources
-        run: ./scripts/packaged-cli-smoke.ps1 artifacts/experimental/verify-${{ matrix.rid }}/${{ matrix.binary }}
+        run: python .release-checks/scripts/packaged-cli-smoke.py artifacts/experimental/verify-${{ matrix.rid }}/${{ matrix.binary }}
       - name: Linux EN/RU terminal scenarios
         if: runner.os == 'Linux'
         shell: bash
