@@ -31,7 +31,9 @@ jobs:
         with:
           ref: ${{ github.sha }}
           path: .release-checks
-          sparse-checkout: scripts/background-smoke.py
+          sparse-checkout: |
+            scripts/background-smoke.py
+            scripts/tui-smoke.py
           sparse-checkout-cone-mode: false
       - name: Require an existing draft
         run: |
@@ -45,8 +47,8 @@ jobs:
           unpacked="$(mktemp -d)"
           tar -xzf artifacts/release/deneb-osx-arm64.tar.gz -C "$unpacked"
           "$unpacked/deneb" --version
-          python3 scripts/tui-smoke.py "$unpacked/deneb" en
-          python3 scripts/tui-smoke.py "$unpacked/deneb" ru
+          python3 .release-checks/scripts/tui-smoke.py "$unpacked/deneb" en
+          python3 .release-checks/scripts/tui-smoke.py "$unpacked/deneb" ru
           python3 scripts/dialog-smoke.py "$unpacked/deneb"
           python3 .release-checks/scripts/background-smoke.py "$unpacked/deneb"
           git diff --exit-code -- '**/packages*.lock.json'

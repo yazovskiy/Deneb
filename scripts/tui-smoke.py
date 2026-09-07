@@ -226,9 +226,10 @@ with tempfile.TemporaryDirectory(prefix="deneb-tui-") as root:
         process = subprocess.Popen([binary, "--state-dir", root], stdin=slave, stdout=slave, stderr=slave, env=env, start_new_session=True)
         os.close(slave)
         wait_for(tr("Paused", "Ручная пауза"))
-        wait_for(tr("Completed", "Завершение"), 20)
+        wait_for(tr("Completed", "Завершение"), 90)
         os.write(master, b" ")
-        end = time.monotonic() + 20
+        # Allow shared CI runners to serve the fixture slowly; completion and hashes remain mandatory.
+        end = time.monotonic() + 90
         while time.monotonic() < end:
             if select.select([master], [], [], 0.1)[0]:
                 transcript.extend(os.read(master, 65536))
