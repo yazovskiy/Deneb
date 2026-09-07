@@ -1,0 +1,47 @@
+name: Prepare macOS release assets
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag with a draft release
+        required: true
+        default: v2.0.0
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.300'
+      - name: Require an existing draft
+        run: |
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+      - run: dotnet restore --locked-mode
+      - run: dotnet test --no-restore
+      - run: dotnet publish src/Deneb.App -c Release -r osx-arm64 --self-contained true -p:PublishSingleFile=true -p:RestoreLockedMode=true -o artifacts/osx-arm64
+      - name: Package and verify extracted binary
+        run: |
+          bash scripts/package-release.sh
+          unpacked="$(mktemp -d)"
+          tar -xzf artifacts/release/deneb-osx-arm64.tar.gz -C "$unpacked"
+          "$unpacked/deneb" --version
+          python3 scripts/tui-smoke.py "$unpacked/deneb" en
+          python3 scripts/tui-smoke.py "$unpacked/deneb" ru
+          python3 scripts/dialog-smoke.py "$unpacked/deneb"
+          python3 scripts/background-smoke.py "$unpacked/deneb"
+          git diff --exit-code -- '**/packages*.lock.json'
+      - name: Upload only to draft; publication is a separate step
+        run: |
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
+          gh release upload "$RELEASE_TAG" artifacts/release/deneb-osx-arm64.tar.gz artifacts/release/SHA256SUMS.txt --clobber
