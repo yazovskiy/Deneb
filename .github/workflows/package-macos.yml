@@ -15,7 +15,6 @@ jobs:
     permissions:
       contents: write
     env:
-      DOTNET_INSTALL_DIR: ${{ runner.temp }}/deneb-dotnet
       RELEASE_TAG: ${{ inputs.tag }}
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -23,6 +22,8 @@ jobs:
         with:
           ref: ${{ inputs.tag }}
       - uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/deneb-dotnet
         with:
           dotnet-version: '10.0.300'
       - name: Require an existing draft
