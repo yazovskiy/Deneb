@@ -38,7 +38,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             for offset in range(start, end+1, 65536):
                 self.wfile.write(payload[offset:min(end+1, offset+65536)])
                 self.wfile.flush()
-                if end > start: time.sleep(0.03)
+                if end > start: time.sleep(float(os.environ.get("DENEB_SMOKE_DELAY", "0.03")))
         except (BrokenPipeError, ConnectionResetError): pass
 
 server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
@@ -82,6 +82,11 @@ with tempfile.TemporaryDirectory(prefix="deneb-background-") as root:
         def wait(predicate, timeout=40):
             deadline = time.monotonic()+timeout
             while time.monotonic() < deadline:
+                # Keep consuming the terminal while polling IPC. Otherwise PTY backpressure
+                # blocks rendering and prevents the UI's control heartbeat on slow runners.
+                if master is not None:
+                    while select.select([master], [], [], 0)[0]:
+                        if not os.read(master, 65536): break
                 state = client.call(1)
                 assert not any(j["State"] in (4,5) for j in state["Jobs"]), state
                 if predicate(state): return state
