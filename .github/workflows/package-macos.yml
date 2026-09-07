@@ -15,6 +15,7 @@ jobs:
     permissions:
       contents: write
     env:
+      DOTNET_INSTALL_DIR: ${{ runner.temp }}/deneb-dotnet
       RELEASE_TAG: ${{ inputs.tag }}
       GH_TOKEN: ${{ github.token }}
     steps:
