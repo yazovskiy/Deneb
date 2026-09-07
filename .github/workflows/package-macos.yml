@@ -26,6 +26,13 @@ jobs:
           DOTNET_INSTALL_DIR: ${{ runner.temp }}/deneb-dotnet
         with:
           dotnet-version: '10.0.300'
+      - name: Get current release verification harness (product remains at tag)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: .release-checks
+          sparse-checkout: scripts/background-smoke.py
+          sparse-checkout-cone-mode: false
       - name: Require an existing draft
         run: |
           test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = true
@@ -41,7 +48,7 @@ jobs:
           python3 scripts/tui-smoke.py "$unpacked/deneb" en
           python3 scripts/tui-smoke.py "$unpacked/deneb" ru
           python3 scripts/dialog-smoke.py "$unpacked/deneb"
-          python3 scripts/background-smoke.py "$unpacked/deneb"
+          python3 .release-checks/scripts/background-smoke.py "$unpacked/deneb"
           git diff --exit-code -- '**/packages*.lock.json'
       - name: Upload only to draft; publication is a separate step
         run: |

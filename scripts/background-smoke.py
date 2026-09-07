@@ -131,7 +131,9 @@ with tempfile.TemporaryDirectory(prefix="deneb-background-") as root:
         os.write(master, b"\x1b[24~")  # F12: explicit restart/reconnect
         time.sleep(1)
         client = Client()
-        state = wait(lambda s:s["Jobs"][0]["State"] == 3, 45)
+        # Shared CI runners can serve this 64 MiB fixture below 1 MiB/s after retries.
+        # Keep a bounded deadline without weakening the final state/hash checks.
+        state = wait(lambda s:s["Jobs"][0]["State"] == 3, 120)
         target = Path(state["Jobs"][0]["Target"])
         assert hashlib.sha256(target.read_bytes()).digest() == hashlib.sha256(payload).digest()
         # Drain progress before the next key, then stop through the actual UI.
