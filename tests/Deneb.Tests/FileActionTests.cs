@@ -1,3 +1,4 @@
+using Deneb.Core;
 using Deneb.App;
 using Xunit;
 
@@ -16,8 +17,8 @@ public sealed class FileActionTests
             await actions.ExecuteAsync(path, "reveal"); Assert.Equal("/usr/bin/open", command); Assert.Equal(new[] { "-R", path }, args);
             await actions.ExecuteAsync(path, "open"); Assert.Equal(new[] { path }, args);
             await actions.ExecuteAsync(path, "copy"); Assert.Equal("/usr/bin/pbcopy", command); Assert.Empty(args); Assert.Equal(path, input);
-            await Assert.ThrowsAsync<IOException>(() => new MacFileActions((_, _, _) => Task.FromResult(1)).ExecuteAsync(path, "open"));
-            await Assert.ThrowsAsync<IOException>(() => actions.ExecuteAsync(path + "missing", "open"));
+            await Assert.ThrowsAsync<ProblemException>(() => new MacFileActions((_, _, _) => Task.FromResult(1)).ExecuteAsync(path, "open"));
+            await Assert.ThrowsAsync<ProblemException>(() => actions.ExecuteAsync(path + "missing", "open"));
         }
         finally { File.Delete(path); }
     }

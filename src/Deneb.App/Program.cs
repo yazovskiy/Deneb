@@ -3,42 +3,47 @@ using Deneb.Core;
 using Terminal.Gui;
 using Deneb.App;
 
-if (args.Contains("--version")) { Console.WriteLine("Deneb 1.1.0"); return; }
-if (args.Contains("--help")) { Console.WriteLine("deneb — интерактивный менеджер загрузок. --state-dir PATH: отдельное хранилище; --version; --help"); return; }
 var stateIndex = Array.IndexOf(args, "--state-dir");
-if (stateIndex >= 0 && stateIndex + 1 >= args.Length) { Console.Error.WriteLine("Укажите путь после --state-dir."); Environment.ExitCode = 2; return; }
-if (Console.IsInputRedirected) { Console.Error.WriteLine("Запустите Deneb в интерактивном терминале."); Environment.ExitCode = 2; return; }
+var stateDirectory = stateIndex >= 0 && stateIndex + 1 < args.Length ? args[stateIndex + 1] : null;
+var localization = new Localization(StateStore.ReadLanguage(stateDirectory));
+if (args.Contains("--version")) { Console.WriteLine("Deneb 1.2.0"); return; }
+if (stateIndex >= 0 && stateDirectory == null) { Console.Error.WriteLine(localization.Text("MissingStatePath")); Environment.ExitCode = 2; return; }
+if (args.Contains("--help")) { Console.WriteLine(localization.Text("CliHelp")); return; }
+if (Console.IsInputRedirected) { Console.Error.WriteLine(localization.Text("InteractiveRequired")); Environment.ExitCode = 2; return; }
 try
 {
-    await using var engine = new DownloadEngine(stateIndex >= 0 ? args[stateIndex + 1] : null);
+    await using var engine = new DownloadEngine(stateDirectory);
+    localization.SetLanguage(engine.GetSettings().Language);
     Application.Init();
-    try { new DenebUi(engine).Run(); }
+    try { new DenebUi(engine, localization).Run(); }
     finally { Application.Shutdown(); }
-    Console.WriteLine("Сохраняю прогресс и останавливаю загрузки…");
+    Console.WriteLine(localization.Text("Shutdown"));
 }
 catch (Exception ex)
 {
-    Console.Error.WriteLine(ex is IOException or ArgumentException or InvalidDataException ? ex.Message : $"Ошибка запуска Deneb: {ex.GetType().Name}");
+    Console.Error.WriteLine(localization.Text("StartupError", localization.Error(ex)));
     Environment.ExitCode = 1;
 }
 
-sealed class DenebUi(DownloadEngine engine)
+sealed class DenebUi(DownloadEngine engine, Localization localization)
 {
     private readonly TableView table = new() { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(2), FullRowSelect = true };
     private readonly Label summary = new() { X = 0, Y = Pos.AnchorEnd(2), Width = Dim.Fill(), Height = 1 };
-    private readonly Label keys = new("A добавить · Space пауза · Enter детали · F6 общая пауза · F1 помощь · Q выход")
+    private readonly Label keys = new()
     { X = 0, Y = Pos.AnchorEnd(1), Width = Dim.Fill(), Height = 1 };
     private IReadOnlyList<Snapshot> rows = [];
     private bool modal;
     private bool busy;
     private readonly HashSet<Guid> marked = [];
-    private string notice = "";
+    private BatchResult? notice;
+    private Window? window;
+    private string T(string key, params object?[] values) => localization.Text(key, values);
     private Guid[] Targets => marked.Count > 0 ? marked.ToArray() : Selected is { } id ? [id] : [];
-    private void Report(BatchResult result) => notice = $"Обработано: {result.Processed.Count}, пропущено: {result.Skipped.Count}, ошибок: {result.Failed.Count}";
+    private void Report(BatchResult result) => notice = result;
 
     public void Run()
     {
-        var window = new Window("Deneb — загрузки") { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill() };
+        window = new Window(T("WindowTitle")) { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill() };
         window.Add(table, summary, keys);
         table.Style.ExpandLastColumn = false;
         Application.Top.Add(window);
@@ -62,8 +67,8 @@ sealed class DenebUi(DownloadEngine engine)
                 case Key.o: case Key.O: FileAction("open"); break;
                 case Key.F7: FileAction("reveal"); break;
                 case Key.F8: FileAction("copy"); break;
-                case Key.F9: Dialog(() => { if (MessageBox.Query("Очистить завершённые", "Убрать все завершённые записи? Файлы останутся на диске.", "Отмена", "Очистить") == 1) Report(engine.ClearCompleted()); }); break;
-                case Key.F1: Dialog(() => MessageBox.Query("Клавиши Deneb", "A — добавить; U — заменить URL; F2 — настройки\nInsert — отметить строку; Space — пауза/продолжение выбранных\nF3/F4 — выше/ниже; F5 — скачать следующей (без снятия паузы)\nF6 — общая пауза/продолжение\nEnter — подробности; Delete — убрать выбранные\nO — открыть; F7 — Finder; F8 — скопировать путь\nF9 — очистить завершённые; Q/Ctrl+C — выход", "Закрыть")); break;
+                case Key.F9: Dialog(() => { if (MessageBox.Query(T("ClearTitle"), T("ClearPrompt"), T("Cancel"), T("Clear")) == 1) Report(engine.ClearCompleted()); }); break;
+                case Key.F1: Dialog(() => MessageBox.Query(T("HelpTitle"), T("Help"), T("Close"))); break;
                 case Key.q: case Key.Q: case Key.CtrlMask | Key.c: Application.RequestStop(); break;
                 default: return;
             }
@@ -81,27 +86,30 @@ sealed class DenebUi(DownloadEngine engine)
     {
         if (modal) return;
         var selected = Selected;
+        var rowOffset = table.RowOffset; var columnOffset = table.ColumnOffset;
+        keys.Text = T("Keys"); if (window != null) window.Title = T("WindowTitle");
         rows = engine.Snapshots();
         marked.IntersectWith(rows.Select(r => r.Id));
         var data = new DataTable();
-        foreach (var col in new[] { "Файл", "Состояние", "%", "Скачано / Всего", "Скорость", "Осталось", "Потоки" }) data.Columns.Add(col);
+        foreach (var col in new[] { T("File"), T("State"), "%", T("Volume"), T("Speed"), T("Remaining"), T("Connections") }) data.Columns.Add(col);
         foreach (var s in rows)
         {
-            var percent = s.Total is > 0 ? $"{100.0 * s.Bytes / s.Total:0.0}" : s.State == DownloadState.Completed ? "100" : "—";
+            var percent = s.Total is > 0 ? localization.Number(100.0 * s.Bytes / s.Total.Value) : s.State == DownloadState.Completed ? "100" : "—";
             var eta = Duration(s.Eta);
-            data.Rows.Add((marked.Contains(s.Id) ? "✓ " : "") + s.Name, s.Phase, percent, $"{Size(s.Bytes)} / {(s.Total.HasValue ? Size(s.Total.Value) : "?")}", $"{Size((long)s.Speed)}/с", eta, s.Connections);
+            data.Rows.Add((marked.Contains(s.Id) ? "✓ " : "") + localization.Name(s), localization.Phase(s.Phase), percent, $"{Size(s.Bytes)} / {(s.Total.HasValue ? Size(s.Total.Value) : "?")}", localization.Rate(s.Speed), eta, s.Connections.ToString(localization.Culture));
         }
         table.Table = data;
         table.Style.ColumnStyles.Clear();
         table.Style.ColumnStyles[data.Columns[0]] = new TableView.ColumnStyle { MinWidth = 24, MaxWidth = 38 };
         var index = selected.HasValue ? rows.ToList().FindIndex(r => r.Id == selected) : 0;
         if (rows.Count > 0) table.SetSelection(0, Math.Max(0, index), false);
-        summary.Text = engine.PersistenceError ?? (busy ? "Выполняется операция…" : $"{(engine.GloballyPaused ? "ОБЩАЯ ПАУЗА · " : "")}Задач: {rows.Count} · Отмечено: {marked.Count} · {Size((long)rows.Sum(r => r.Speed))}/с · {notice}");
+        table.RowOffset = rowOffset; table.ColumnOffset = columnOffset;
+        summary.Text = engine.PersistenceError != null ? localization.Error(engine.PersistenceError) : busy ? T("Busy") : T("Summary", engine.GloballyPaused ? T("GlobalBanner") : "", rows.Count, marked.Count, localization.Rate(rows.Sum(r => r.Speed)), notice == null ? "" : T("Batch", notice.Processed.Count, notice.Skipped.Count, notice.Failed.Count));
         table.SetNeedsDisplay();
     }
-    private static string Size(long n) => n >= 1073741824 ? $"{n / 1073741824d:0.0} ГиБ" : n >= 1048576 ? $"{n / 1048576d:0.0} МиБ" : $"{n / 1024d:0.0} КиБ";
+    private string Size(long n) => localization.Size(n);
     private void Dialog(Action action) { modal = true; try { action(); } finally { modal = false; Refresh(); } }
-    private void Error(Exception ex) => MessageBox.ErrorQuery("Ошибка", ex is ArgumentException or IOException ? ex.Message : "Операция не выполнена: " + ex.GetType().Name, "OK");
+    private void Error(Exception ex) => MessageBox.ErrorQuery(T("ErrorTitle"), localization.Error(ex), T("Ok"));
     private void Work(Func<Task> action)
     {
         busy = true;
@@ -117,9 +125,9 @@ sealed class DenebUi(DownloadEngine engine)
         var input = new TextView { X = 1, Y = 1, Width = Dim.Fill(1), Height = Dim.Fill(6), WordWrap = false, AllowsTab = false };
         var folder = new TextField(engine.GetSettings().Destination) { X = 10, Y = Pos.AnchorEnd(5), Width = Dim.Fill(1) };
         var name = new TextField("") { X = 10, Y = Pos.AnchorEnd(3), Width = Dim.Fill(1) };
-        var ok = new Button("Проверить"); var cancel = new Button("Отмена");
-        var dialog = new Dialog("Ссылки / строки Android — по одной на строку", 95, 22, ok, cancel);
-        dialog.Add(input, new Label("Папка:") { X = 1, Y = Pos.AnchorEnd(5) }, folder, new Label("Имя*:") { X = 1, Y = Pos.AnchorEnd(3) }, name);
+        var ok = new Button(T("Check")); var cancel = new Button(T("Cancel"));
+        var dialog = new Dialog(T("AddTitle"), 95, 22, ok, cancel);
+        dialog.Add(input, new Label(T("FolderLabel")) { X = 1, Y = Pos.AnchorEnd(5) }, folder, new Label(T("NameLabel")) { X = 1, Y = Pos.AnchorEnd(3) }, name);
         input.SetFocus();
         cancel.Clicked += () => Application.RequestStop();
         ok.Clicked += () =>
@@ -128,11 +136,11 @@ sealed class DenebUi(DownloadEngine engine)
             {
                 var parsed = InputParser.Parse(input.Text.ToString() ?? "");
                 var custom = name.Text.ToString();
-                if (parsed.Count > 1 && !string.IsNullOrWhiteSpace(custom)) throw new ArgumentException("Своё имя можно указать только для одной ссылки.");
+                if (parsed.Count > 1 && !string.IsNullOrWhiteSpace(custom)) throw new ProblemException(ProblemCode.SingleName);
                 var dest = folder.Text.ToString() ?? "";
-                if (!Path.IsPathFullyQualified(dest)) throw new ArgumentException("Укажите абсолютный путь к папке.");
-                var preview = string.Join("\n\n", parsed.Select(p => $"{(string.IsNullOrWhiteSpace(custom) ? p.Name ?? "Автоматическое имя" : custom)}\n{p.Url}"));
-                if (MessageBox.Query("Добавить в очередь?", preview, "Добавить", "Назад") != 0) return;
+                if (!Path.IsPathFullyQualified(dest)) throw new ProblemException(ProblemCode.AbsolutePath);
+                var preview = string.Join("\n\n", parsed.Select(p => $"{(string.IsNullOrWhiteSpace(custom) ? p.Name ?? T("AutomaticName") : custom)}\n{p.Url}"));
+                if (MessageBox.Query(T("AddConfirm"), preview, T("Add"), T("Back")) != 0) return;
                 foreach (var item in parsed) engine.Add(item, dest, string.IsNullOrWhiteSpace(custom) ? null : custom);
                 Application.RequestStop();
             }
@@ -146,7 +154,7 @@ sealed class DenebUi(DownloadEngine engine)
         if (rows.Any(s => ids.Contains(s.Id) && s.State is DownloadState.Downloading or DownloadState.Queued)) Work(async () => Report(await engine.PauseManyAsync(ids)));
         else Report(engine.ResumeMany(ids));
     }
-    private static string Duration(TimeSpan? time) => time is { } t ? (t.Days > 0 ? $"{t.Days} д " : "") + t.ToString(@"hh\:mm\:ss") : "—";
+    private string Duration(TimeSpan? time) => localization.Duration(time);
     private void FileAction(string action)
     {
         if (Selected is not { } id) return;
@@ -159,13 +167,13 @@ sealed class DenebUi(DownloadEngine engine)
         if (Selected is not { } id) return;
         Dialog(() =>
         {
-            var close = new Button("Закрыть"); var restart = new Button("Начать заново");
-            var open = new Button("Открыть файл"); var reveal = new Button("Показать в Finder"); var copy = new Button("Скопировать путь");
-            var dialog = new Dialog("Подробности загрузки", 110, 25, close, restart, open, reveal, copy);
-            var info = new Label { X = 1, Y = 1, Width = Dim.Fill(1), Height = 8 };
+            var close = new Button(T("Close")); var restart = new Button(T("Restart"));
+            var open = new Button(T("OpenFile")); var reveal = new Button(T("Reveal")); var copy = new Button(T("CopyPath"));
+            var dialog = new Dialog(T("DetailsTitle"), 110, 25, close, restart, open, reveal, copy);
+            var info = new TextView { X = 1, Y = 1, Width = Dim.Fill(1), Height = 8, ReadOnly = true, WordWrap = true, AllowsTab = false };
             var segments = new TableView { X = 1, Y = 10, Width = Dim.Fill(1), Height = Dim.Fill(2), FullRowSelect = true };
             dialog.Add(info, segments); close.Clicked += () => Application.RequestStop();
-            restart.Clicked += () => { if (MessageBox.Query("Начать заново?", "Старые части будут сохранены отдельно.", "Отмена", "Начать") == 1) { Work(() => engine.RestartAsync(id)); Application.RequestStop(); } };
+            restart.Clicked += () => { if (MessageBox.Query(T("RestartTitle"), T("RestartPrompt"), T("Cancel"), T("Start")) == 1) { Work(() => engine.RestartAsync(id)); Application.RequestStop(); } };
             async void Act(string action)
             {
                 var s = engine.Snapshots().FirstOrDefault(s => s.Id == id);
@@ -177,14 +185,16 @@ sealed class DenebUi(DownloadEngine engine)
             void Update()
             {
                 var s = engine.Snapshots().FirstOrDefault(s => s.Id == id); if (s == null) return;
-                info.Text = $"{s.Name}\n{s.Phase} · {Size(s.Bytes)} / {(s.Total.HasValue ? Size(s.Total.Value) : "?")}\nСкорость: {Size((long)s.Speed)}/с · Осталось: {Duration(s.Eta)} · Соединений: {s.Connections}\nИсточник: {s.Source}\nФайл: {s.Target}\nПроверка сервера: повтор {s.Retry}/10 · ожидание {Duration(s.RetryIn)}\n{s.Error}";
+                var top = info.TopRow; var left = info.LeftColumn; var cursor = info.CursorPosition;
+                var detailText = T("Details", localization.Name(s), localization.Phase(s.Phase), Size(s.Bytes), s.Total.HasValue ? Size(s.Total.Value) : T("Unknown"), localization.Rate(s.Speed), Duration(s.Eta), s.Connections, s.Source, s.Target, s.Retry, Duration(s.RetryIn), localization.Error(s.Error));
+                if (info.Text.ToString() != detailText) { info.Text = detailText; info.CursorPosition = cursor; info.TopRow = top; info.LeftColumn = left; }
                 restart.Enabled = s.State == DownloadState.NeedsDecision; open.Enabled = reveal.Enabled = copy.Enabled = s.State == DownloadState.Completed;
-                var data = new DataTable(); foreach (var c in new[] { "№", "Диапазон", "Скачано / Всего", "%", "Состояние", "Повтор", "Через" }) data.Columns.Add(c);
-                foreach (var p in s.Segments) { var total = p.End - p.Start + 1; data.Rows.Add(p.Number, $"{p.Start}–{p.End}", $"{Size(p.Bytes)} / {(total.HasValue ? Size(total.Value) : "?")}", total > 0 ? $"{100d * p.Bytes / total:0.0}" : "—", p.Phase, $"{p.Retry}/10", Duration(p.RetryIn)); }
+                var data = new DataTable(); foreach (var c in new[] { T("Number"), T("Range"), T("Volume"), "%", T("State"), T("Retry"), T("RetryIn") }) data.Columns.Add(c);
+                foreach (var p in s.Segments) { var total = p.End - p.Start + 1; data.Rows.Add(p.Number.ToString(localization.Culture), $"{p.Start.ToString(localization.Culture)}–{p.End?.ToString(localization.Culture)}", $"{Size(p.Bytes)} / {(total.HasValue ? Size(total.Value) : "?")}", total > 0 ? localization.Number(100d * p.Bytes / total.Value) : "—", localization.Phase(p.Phase), T("RetryFormat", p.Retry), Duration(p.RetryIn)); }
                 var row = segments.SelectedRow; var column = segments.SelectedColumn; var offset = segments.RowOffset; var horizontal = segments.ColumnOffset; segments.Table = data;
                 if (data.Rows.Count > 0) segments.SetSelection(Math.Max(0, column), Math.Clamp(row, 0, data.Rows.Count - 1), false); segments.RowOffset = offset; segments.ColumnOffset = horizontal;
             }
-            Update(); var timer = Application.MainLoop.AddTimeout(TimeSpan.FromMilliseconds(250), _ => { Update(); return true; });
+            Update(); info.SetFocus(); var timer = Application.MainLoop.AddTimeout(TimeSpan.FromMilliseconds(250), _ => { Update(); return true; });
             try { Application.Run(dialog); } finally { Application.MainLoop.RemoveTimeout(timer); }
         });
     }
@@ -194,8 +204,8 @@ sealed class DenebUi(DownloadEngine engine)
         Dialog(() =>
         {
             var field = new TextField(engine.GetUrl(id)) { X = 1, Y = 1, Width = Dim.Fill(1) };
-            var ok = new Button("Заменить"); var cancel = new Button("Отмена");
-            var dialog = new Dialog("Новый URL того же файла", 90, 7, ok, cancel);
+            var ok = new Button(T("Replace")); var cancel = new Button(T("Cancel"));
+            var dialog = new Dialog(T("ReplaceTitle"), 90, 7, ok, cancel);
             dialog.Add(field); cancel.Clicked += () => Application.RequestStop();
             field.SetFocus();
             ok.Clicked += () =>
@@ -211,29 +221,32 @@ sealed class DenebUi(DownloadEngine engine)
         var ids = Targets; if (ids.Length == 0) return;
         Dialog(() =>
         {
-            var choice = MessageBox.Query("Убрать задачи", $"Задач: {ids.Length}. Готовые файлы останутся на диске.", "Отмена", "Сохранить части", "Удалить части");
+            var choice = MessageBox.Query(T("RemoveTitle"), T("RemovePrompt", ids.Length), T("Cancel"), T("KeepParts"), T("DeleteParts"));
             if (choice == 1) Work(async () => Report(await engine.RemoveManyAsync(ids)));
-            if (choice == 2 && MessageBox.Query("Удаление", "Безвозвратно удалить незавершённые части этой задачи?", "Отмена", "Удалить") == 1)
+            if (choice == 2 && MessageBox.Query(T("DeleteTitle"), T("DeletePrompt"), T("Cancel"), T("Delete")) == 1)
                 Work(async () => Report(await engine.RemoveManyAsync(ids, true)));
         });
     }
     private void Settings() => Dialog(() =>
     {
         var settings = engine.GetSettings();
-        var files = new TextField(settings.ActiveFiles.ToString()) { X = 26, Y = 1, Width = 6 };
-        var connections = new TextField(settings.Connections.ToString()) { X = 26, Y = 3, Width = 6 };
+        var files = new TextField(settings.ActiveFiles.ToString(localization.Culture)) { X = 26, Y = 1, Width = 6 };
+        var connections = new TextField(settings.Connections.ToString(localization.Culture)) { X = 26, Y = 3, Width = 6 };
         var folder = new TextField(settings.Destination) { X = 1, Y = 6, Width = Dim.Fill(1) };
-        var ok = new Button("Сохранить"); var cancel = new Button("Отмена");
-        var dialog = new Dialog("Настройки (потоки — для новых задач)", 85, 12, ok, cancel);
-        dialog.Add(new Label("Одновременных файлов:") { X = 1, Y = 1 }, files, new Label("Соединений на файл:") { X = 1, Y = 3 }, connections, new Label("Папка загрузок:") { X = 1, Y = 5 }, folder);
+        var ok = new Button(T("Save")); var cancel = new Button(T("Cancel"));
+        var dialog = new Dialog(T("SettingsTitle"), 90, 16, ok, cancel);
+        var language = new RadioGroup(new NStack.ustring[] { T("English"), T("Russian") }) { X = 27, Y = 8, SelectedItem = settings.Language == "ru" ? 1 : 0 };
+        dialog.Add(new Label(T("ActiveFilesLabel")) { X = 1, Y = 1 }, files, new Label(T("ConnectionsLabel")) { X = 1, Y = 3 }, connections, new Label(T("DestinationLabel")) { X = 1, Y = 5 }, folder);
+        dialog.Add(new Label(T("LanguageLabel")) { X = 1, Y = 8 }, language);
         files.SetFocus();
         cancel.Clicked += () => Application.RequestStop();
         ok.Clicked += () =>
         {
             try
             {
-                if (!int.TryParse(files.Text.ToString(), out var f) || !int.TryParse(connections.Text.ToString(), out var c)) throw new ArgumentException("Введите целые числа от 1 до 16.");
-                engine.SetSettings(new() { ActiveFiles = f, Connections = c, Destination = folder.Text.ToString() ?? "" }); Application.RequestStop();
+                if (!int.TryParse(files.Text.ToString(), System.Globalization.NumberStyles.Integer, localization.Culture, out var f) || !int.TryParse(connections.Text.ToString(), System.Globalization.NumberStyles.Integer, localization.Culture, out var c)) throw new ProblemException(ProblemCode.IntegerSettings);
+                engine.SetSettings(new() { ActiveFiles = f, Connections = c, Destination = folder.Text.ToString() ?? "", Language = language.SelectedItem == 1 ? "ru" : "en" });
+                localization.SetLanguage(engine.GetSettings().Language); Application.RequestStop();
             }
             catch (Exception ex) { Error(ex); }
         };

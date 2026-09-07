@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <data name="WindowTitle" xml:space="preserve"><value>Deneb — загрузки</value></data>
+  <data name="Keys" xml:space="preserve"><value>A добавить · Space пауза · Enter детали · F6 общая пауза · F1 помощь · Q выход</value></data>
+  <data name="Batch" xml:space="preserve"><value>Обработано: {0}, пропущено: {1}, ошибок: {2}</value></data>
+  <data name="ClearTitle" xml:space="preserve"><value>Очистить завершённые</value></data>
+  <data name="ClearPrompt" xml:space="preserve"><value>Убрать все завершённые записи? Файлы останутся на диске.</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Отмена</value></data>
+  <data name="Clear" xml:space="preserve"><value>Очистить</value></data>
+  <data name="Close" xml:space="preserve"><value>Закрыть</value></data>
+  <data name="HelpTitle" xml:space="preserve"><value>Клавиши Deneb</value></data>
+  <data name="Help" xml:space="preserve"><value>A — добавить; U — заменить URL; F2 — настройки
+Insert — отметить строку; Space — пауза/продолжение выбранных
+F3/F4 — выше/ниже; F5 — скачать следующей (без снятия паузы)
+F6 — общая пауза/продолжение
+Enter — подробности; Delete — убрать выбранные
+O — открыть; F7 — Finder; F8 — скопировать путь
+F9 — очистить завершённые; Q/Ctrl+C — выход</value></data>
+  <data name="File" xml:space="preserve"><value>Файл</value></data>
+  <data name="State" xml:space="preserve"><value>Состояние</value></data>
+  <data name="Percent" xml:space="preserve"><value>%</value></data>
+  <data name="Volume" xml:space="preserve"><value>Скачано / Всего</value></data>
+  <data name="Speed" xml:space="preserve"><value>Скорость</value></data>
+  <data name="Remaining" xml:space="preserve"><value>Осталось</value></data>
+  <data name="Connections" xml:space="preserve"><value>Потоки</value></data>
+  <data name="Unknown" xml:space="preserve"><value>?</value></data>
+  <data name="Dash" xml:space="preserve"><value>—</value></data>
+  <data name="Busy" xml:space="preserve"><value>Выполняется операция…</value></data>
+  <data name="GlobalBanner" xml:space="preserve"><value>ОБЩАЯ ПАУЗА · </value></data>
+  <data name="Summary" xml:space="preserve"><value>{0}Задач: {1} · Отмечено: {2} · {3} · {4}</value></data>
+  <data name="GiB" xml:space="preserve"><value>ГиБ</value></data>
+  <data name="MiB" xml:space="preserve"><value>МиБ</value></data>
+  <data name="KiB" xml:space="preserve"><value>КиБ</value></data>
+  <data name="SizeFormat" xml:space="preserve"><value>{0:0.0} {1}</value></data>
+  <data name="Rate" xml:space="preserve"><value>{0}/с</value></data>
+  <data name="Days" xml:space="preserve"><value>{0} д </value></data>
+  <data name="ErrorTitle" xml:space="preserve"><value>Ошибка</value></data>
+  <data name="Ok" xml:space="preserve"><value>ОК</value></data>
+  <data name="Check" xml:space="preserve"><value>Проверить</value></data>
+  <data name="AddTitle" xml:space="preserve"><value>Ссылки / строки Android — по одной на строку</value></data>
+  <data name="FolderLabel" xml:space="preserve"><value>Папка:</value></data>
+  <data name="NameLabel" xml:space="preserve"><value>Имя*:</value></data>
+  <data name="AutomaticName" xml:space="preserve"><value>Автоматическое имя</value></data>
+  <data name="GettingName" xml:space="preserve"><value>Получение имени…</value></data>
+  <data name="AddConfirm" xml:space="preserve"><value>Добавить в очередь?</value></data>
+  <data name="Add" xml:space="preserve"><value>Добавить</value></data>
+  <data name="Back" xml:space="preserve"><value>Назад</value></data>
+  <data name="Restart" xml:space="preserve"><value>Начать заново</value></data>
+  <data name="OpenFile" xml:space="preserve"><value>Открыть файл</value></data>
+  <data name="Reveal" xml:space="preserve"><value>Показать в Finder</value></data>
+  <data name="CopyPath" xml:space="preserve"><value>Скопировать путь</value></data>
+  <data name="DetailsTitle" xml:space="preserve"><value>Подробности загрузки</value></data>
+  <data name="RestartTitle" xml:space="preserve"><value>Начать заново?</value></data>
+  <data name="RestartPrompt" xml:space="preserve"><value>Старые части будут сохранены отдельно.</value></data>
+  <data name="Start" xml:space="preserve"><value>Начать</value></data>
+  <data name="Details" xml:space="preserve"><value>{0}
+{1} · {2} / {3}
+Скорость: {4} · Осталось: {5} · Соединений: {6}
+Источник: {7}
+Файл: {8}
+Проверка сервера: повтор {9}/10 · ожидание {10}
+{11}</value></data>
+  <data name="Number" xml:space="preserve"><value>№</value></data>
+  <data name="Range" xml:space="preserve"><value>Диапазон</value></data>
+  <data name="Retry" xml:space="preserve"><value>Повтор</value></data>
+  <data name="RetryIn" xml:space="preserve"><value>Через</value></data>
+  <data name="RetryFormat" xml:space="preserve"><value>{0}/10</value></data>
+  <data name="Replace" xml:space="preserve"><value>Заменить</value></data>
+  <data name="ReplaceTitle" xml:space="preserve"><value>Новый URL того же файла</value></data>
+  <data name="RemoveTitle" xml:space="preserve"><value>Убрать задачи</value></data>
+  <data name="RemovePrompt" xml:space="preserve"><value>Задач: {0}. Готовые файлы останутся на диске.</value></data>
+  <data name="KeepParts" xml:space="preserve"><value>Сохранить части</value></data>
+  <data name="DeleteParts" xml:space="preserve"><value>Удалить части</value></data>
+  <data name="DeleteTitle" xml:space="preserve"><value>Удаление</value></data>
+  <data name="DeletePrompt" xml:space="preserve"><value>Безвозвратно удалить незавершённые части выбранных задач?</value></data>
+  <data name="Delete" xml:space="preserve"><value>Удалить</value></data>
+  <data name="Save" xml:space="preserve"><value>Сохранить</value></data>
+  <data name="SettingsTitle" xml:space="preserve"><value>Настройки (потоки — для новых задач)</value></data>
+  <data name="ActiveFilesLabel" xml:space="preserve"><value>Одновременных файлов:</value></data>
+  <data name="ConnectionsLabel" xml:space="preserve"><value>Соединений на файл:</value></data>
+  <data name="DestinationLabel" xml:space="preserve"><value>Папка загрузок:</value></data>
+  <data name="LanguageLabel" xml:space="preserve"><value>Language / Язык</value></data>
+  <data name="English" xml:space="preserve"><value>English</value></data>
+  <data name="Russian" xml:space="preserve"><value>Русский</value></data>
+  <data name="CliHelp" xml:space="preserve"><value>deneb — интерактивный менеджер загрузок.
+--state-dir PATH: отдельное хранилище
+--version: показать версию
+--help: показать справку
+F2: Language / Язык — English или Русский</value></data>
+  <data name="MissingStatePath" xml:space="preserve"><value>Укажите путь после --state-dir.</value></data>
+  <data name="InteractiveRequired" xml:space="preserve"><value>Запустите Deneb в интерактивном терминале.</value></data>
+  <data name="Shutdown" xml:space="preserve"><value>Сохраняю прогресс и останавливаю загрузки…</value></data>
+  <data name="StartupError" xml:space="preserve"><value>Ошибка запуска Deneb: {0}</value></data>
+  <data name="Error_EmptyInput" xml:space="preserve"><value>Добавьте хотя бы одну HTTP/HTTPS-ссылку.</value></data>
+  <data name="Error_InvalidUrl" xml:space="preserve"><value>Нужна корректная HTTP/HTTPS-ссылка без логина и пароля в адресе.</value></data>
+  <data name="Error_InvalidSettings" xml:space="preserve"><value>Укажите абсолютную папку и от 1 до 16 файлов/соединений.</value></data>
+  <data name="Error_AbsolutePath" xml:space="preserve"><value>Папка должна быть абсолютным путём.</value></data>
+  <data name="Error_StoreLocked" xml:space="preserve"><value>Это хранилище Deneb уже открыто другим процессом.</value></data>
+  <data name="Error_UnsupportedStore" xml:space="preserve"><value>Неподдерживаемая версия хранилища Deneb.</value></data>
+  <data name="Error_CorruptStore" xml:space="preserve"><value>Основное и резервное хранилище повреждены. Файлы загрузок сохранены.</value></data>
+  <data name="Error_MissingParts" xml:space="preserve"><value>Часть сохранённых данных отсутствует. Начните заново.</value></data>
+  <data name="Error_Persistence" xml:space="preserve"><value>Не удалось сохранить состояние: проверьте место и права доступа.</value></data>
+  <data name="Error_IdentityUnknown" xml:space="preserve"><value>Нельзя подтвердить прежний файл. Замените ссылку или начните заново.</value></data>
+  <data name="Error_NoResume" xml:space="preserve"><value>Сервер не поддерживает докачку. Можно начать заново.</value></data>
+  <data name="Error_Disk" xml:space="preserve"><value>Ошибка диска: проверьте свободное место и права доступа.</value></data>
+  <data name="Error_NetworkExhausted" xml:space="preserve"><value>Сетевая ошибка после повторных попыток. Можно продолжить позже.</value></data>
+  <data name="Error_BadRange" xml:space="preserve"><value>Сервер вернул неверный Content-Range.</value></data>
+  <data name="Error_UnsafeResume" xml:space="preserve"><value>Без валидатора и поддержки Range безопасная докачка невозможна. Начните заново.</value></data>
+  <data name="Error_RangeChanged" xml:space="preserve"><value>Сервер изменил файл или диапазон. Данные не были дописаны; требуется решение.</value></data>
+  <data name="Error_TagChanged" xml:space="preserve"><value>ETag файла изменился. Требуется начать заново.</value></data>
+  <data name="Error_UnexpectedResponse" xml:space="preserve"><value>Неожиданный ответ сервера.</value></data>
+  <data name="Error_FileChanged" xml:space="preserve"><value>Файл изменился между запросами. Начните заново.</value></data>
+  <data name="Error_ModifiedChanged" xml:space="preserve"><value>Дата изменения файла изменилась. Начните заново.</value></data>
+  <data name="Error_Disconnected" xml:space="preserve"><value>Соединение оборвалось.</value></data>
+  <data name="Error_TooMuchData" xml:space="preserve"><value>Сервер прислал больше данных, чем заявлено.</value></data>
+  <data name="Error_IncompleteResponse" xml:space="preserve"><value>Неполный ответ сервера.</value></data>
+  <data name="Error_SegmentSize" xml:space="preserve"><value>Размер сегмента не совпадает с сохранённым состоянием.</value></data>
+  <data name="Error_FinalSize" xml:space="preserve"><value>Итоговый размер файла не совпадает.</value></data>
+  <data name="Error_FinalMetadata" xml:space="preserve"><value>Не удалось сохранить метаданные готового файла.</value></data>
+  <data name="Error_Timeout" xml:space="preserve"><value>Истекло время ожидания ответа.</value></data>
+  <data name="Error_Network" xml:space="preserve"><value>Сетевая ошибка соединения.</value></data>
+  <data name="Error_MissingFile" xml:space="preserve"><value>Файл перемещён или удалён.</value></data>
+  <data name="Error_SystemCommand" xml:space="preserve"><value>Системная команда не выполнена.</value></data>
+  <data name="Error_SystemLaunch" xml:space="preserve"><value>Не удалось запустить системную команду macOS.</value></data>
+  <data name="Error_SingleName" xml:space="preserve"><value>Своё имя можно указать только для одной ссылки.</value></data>
+  <data name="Error_IntegerSettings" xml:space="preserve"><value>Введите целые числа от 1 до 16.</value></data>
+  <data name="Error_HttpUnavailable" xml:space="preserve"><value>HTTP {0}: файл недоступен.</value></data>
+  <data name="Error_HttpDenied" xml:space="preserve"><value>HTTP {0}: доступ отклонён. Проверьте или замените ссылку.</value></data>
+  <data name="Error_HttpRetry" xml:space="preserve"><value>HTTP {0}</value></data>
+  <data name="Error_Unexpected" xml:space="preserve"><value>Непредвиденная ошибка. Операция не выполнена.</value></data>
+  <data name="Error_Legacy" xml:space="preserve"><value>Сообщение предыдущей версии: {0}</value></data>
+  <data name="Phase_Queued" xml:space="preserve"><value>Очередь</value></data>
+  <data name="Phase_GlobalPause" xml:space="preserve"><value>Общая пауза</value></data>
+  <data name="Phase_ManualPause" xml:space="preserve"><value>Ручная пауза</value></data>
+  <data name="Phase_Completed" xml:space="preserve"><value>Завершение</value></data>
+  <data name="Phase_Failed" xml:space="preserve"><value>Ошибка</value></data>
+  <data name="Phase_NeedsDecision" xml:space="preserve"><value>Требуется решение</value></data>
+  <data name="Phase_Probing" xml:space="preserve"><value>Проверка сервера</value></data>
+  <data name="Phase_ProbeRetry" xml:space="preserve"><value>Ожидание повтора проверки</value></data>
+  <data name="Phase_Transferring" xml:space="preserve"><value>Передача</value></data>
+  <data name="Phase_Retrying" xml:space="preserve"><value>Ожидание повтора</value></data>
+  <data name="Phase_Ready" xml:space="preserve"><value>Готово</value></data>
+  <data name="Phase_Stopped" xml:space="preserve"><value>Остановлен</value></data>
+  <data name="Phase_Waiting" xml:space="preserve"><value>Ожидание</value></data>
+  <data name="Phase_Assembling" xml:space="preserve"><value>Сборка</value></data>
+  <data name="Phase_Verifying" xml:space="preserve"><value>Проверка файла</value></data>
+</root>

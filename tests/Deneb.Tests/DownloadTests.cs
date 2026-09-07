@@ -102,7 +102,7 @@ public sealed class DownloadTests : IDisposable
         {
             var snapshot = e.Snapshots().Single(s => s.Id == id);
             if (condition(snapshot)) return snapshot;
-            if (snapshot.State is DownloadState.Failed or DownloadState.NeedsDecision) throw new Exception(snapshot.Error);
+            if (snapshot.State is DownloadState.Failed or DownloadState.NeedsDecision) throw new Exception(snapshot.Error?.ToString());
             await Task.Delay(25, timeout.Token);
         }
     }
@@ -113,7 +113,7 @@ public sealed class DownloadTests : IDisposable
         var rows = InputParser.Parse("Row: 2 \\_id=7, title=Джек Ричер 1080p.mp4, uri=[https://example.org/a?x=1==](https://example.org/a?x=1==), status=192, bytes_so_far=6512374\nhttps://example.org/b");
         Assert.Equal(2, rows.Count); Assert.Equal("Джек Ричер 1080p.mp4", rows[0].Name);
         Assert.Equal("https://example.org/a?x=1==", rows[0].Url);
-        Assert.Throws<ArgumentException>(() => InputParser.Parse("ftp://example.org/a"));
+        Assert.Throws<ProblemException>(() => InputParser.Parse("ftp://example.org/a"));
         Assert.Equal("evil_.mp4", InputParser.SafeName("../../evil?.mp4", Guid.NewGuid()));
         Assert.True(System.Text.Encoding.UTF8.GetByteCount(InputParser.SafeName(new string('Я', 200) + ".mp4", Guid.NewGuid())) <= 200);
     }
@@ -235,7 +235,7 @@ public sealed class DownloadTests : IDisposable
     {
         await using var server = await TestServer.Start(); Directory.CreateDirectory(root); await File.WriteAllTextAsync(Destination, "not a directory");
         await using var e = Engine(); var failed = await Wait(e, Add(e, server.Url), s => s.State == DownloadState.Failed);
-        Assert.Contains("диска", failed.Error);
+        Assert.Equal(ProblemCode.Disk, failed.Error?.Code);
     }
     [Fact]
     public void StoreLockAndBackupRecovery()
@@ -243,10 +243,10 @@ public sealed class DownloadTests : IDisposable
         using (var store = new StateStore(StateDir))
         {
             store.Save(new()); store.Save(new());
-            Assert.Throws<IOException>(() => new StateStore(StateDir));
+            Assert.Throws<ProblemException>(() => new StateStore(StateDir));
         }
         File.WriteAllText(Path.Combine(StateDir, "state.json"), "broken");
-        using var recovered = new StateStore(StateDir); Assert.Equal(2, recovered.Load().Version);
+        using var recovered = new StateStore(StateDir); Assert.Equal(3, recovered.Load().Version);
         recovered.Save(new()); Assert.NotNull(JsonSerializer.Deserialize<Library>(File.ReadAllText(Path.Combine(StateDir, "state.json.bak"))));
     }
     [Fact]

@@ -52,7 +52,7 @@ public sealed partial class DownloadEngine
             {
                 var j = library.Jobs.FirstOrDefault(j => j.Id == id);
                 if (j == null || j.State is not (DownloadState.Paused or DownloadState.Failed) || running.ContainsKey(id)) { skipped.Add(id); continue; }
-                j.State = DownloadState.Queued; j.Error = null; processed.Add(id);
+                j.State = DownloadState.Queued; j.Diagnostic = null; processed.Add(id);
             }
             Save();
         }

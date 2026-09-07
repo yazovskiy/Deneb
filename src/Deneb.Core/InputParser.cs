@@ -23,14 +23,14 @@ public static partial class InputParser
             ValidateUrl(url);
             result.Add(new(url, name));
         }
-        if (result.Count == 0) throw new ArgumentException("Добавьте хотя бы одну HTTP/HTTPS-ссылку.");
+        if (result.Count == 0) throw new ProblemException(ProblemCode.EmptyInput);
         return result;
     }
 
     public static Uri ValidateUrl(string url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme is not ("http" or "https") || string.IsNullOrEmpty(uri.Host) || !string.IsNullOrEmpty(uri.UserInfo))
-            throw new ArgumentException("Нужна корректная HTTP/HTTPS-ссылка без логина и пароля в адресе.");
+            throw new ProblemException(ProblemCode.InvalidUrl);
         return uri;
     }
 

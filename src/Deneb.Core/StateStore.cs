@@ -17,7 +17,7 @@ public sealed class StateStore : IDisposable
         if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
         path = Path.Combine(directory, "state.json");
         try { lease = new FileStream(Path.Combine(directory, "instance.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
-        catch (IOException) { throw new IOException("Это хранилище Deneb уже открыто другим процессом."); }
+        catch (IOException) { throw new ProblemException(ProblemCode.StoreLocked); }
     }
     public Library Load()
     {
@@ -27,20 +27,46 @@ public sealed class StateStore : IDisposable
             try
             {
                 var library = JsonSerializer.Deserialize<Library>(File.ReadAllText(candidate)) ?? throw new JsonException();
-                if (library.Version is not (1 or 2)) throw new InvalidDataException("Неподдерживаемая версия хранилища Deneb.");
+                if (library.Version is not (1 or 2 or 3)) throw new ProblemException(ProblemCode.UnsupportedStore);
                 library.Settings.Validate();
-                if (library.Version == 1)
+                if (library.Version < 3)
                 {
-                    if (!File.Exists(path + ".v1.bak")) File.Copy(candidate, path + ".v1.bak", false);
-                    library.Version = 2;
-                    library.GloballyPaused = false;
+                    var backup = path + $".v{library.Version}.bak";
+                    if (!File.Exists(backup)) File.Copy(candidate, backup, false);
+                    if (library.Version == 1) library.GloballyPaused = false;
+                    library.Settings.Language = "en";
+                    foreach (var job in library.Jobs)
+                    {
+                        job.Diagnostic = LegacyProblems.Convert(job.Error);
+                        job.Error = null;
+                    }
+                    library.Version = 3;
                 }
                 recoveredBackup = candidate.EndsWith(".bak", StringComparison.Ordinal);
                 return library;
             }
             catch (Exception ex) when (ex is JsonException or FileNotFoundException) { }
         }
-        throw new InvalidDataException("Основное и резервное хранилище повреждены. Файлы загрузок сохранены.");
+        throw new ProblemException(ProblemCode.CorruptStore);
+    }
+    // CLI help must not acquire a lease, create directories, migrate or save anything.
+    public static string ReadLanguage(string? directory = null)
+    {
+        var state = Path.Combine(directory ?? DefaultDirectory, "state.json");
+        foreach (var candidate in new[] { state, state + ".bak" })
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(File.ReadAllText(candidate));
+                var root = document.RootElement;
+                if (!root.TryGetProperty("Version", out var version) || version.GetInt32() != 3) return "en";
+                if (root.TryGetProperty("Settings", out var settings) && settings.TryGetProperty("Language", out var language))
+                    return Settings.NormalizeLanguage(language.GetString());
+                return "en";
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or InvalidOperationException or FormatException) { }
+        }
+        return "en";
     }
     public void Save(Library library)
     {

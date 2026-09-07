@@ -15,7 +15,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
     private readonly Task scheduler;
     private bool stopping;
     private readonly TimeProvider clock;
-    public string? PersistenceError { get; private set; }
+    public Problem? PersistenceError { get; private set; }
     private sealed class Running
     {
         public CancellationTokenSource Cancel { get; } = new();
@@ -23,22 +23,22 @@ public sealed partial class DownloadEngine : IAsyncDisposable
         public long Bytes;
         public int Connections;
         public SpeedWindow Meter { get; init; } = null!;
-        public string Phase = "Проверка сервера";
+        public DownloadPhase Phase = DownloadPhase.Probing;
         public Progress Probe { get; } = new();
         public Dictionary<int, Progress> Segments { get; } = [];
     }
     private sealed class Progress
     {
         public long Bytes;
-        public string Phase = "Передача";
+        public DownloadPhase Phase = DownloadPhase.Transferring;
         public int Retry;
         public long? RetryAt;
         public TimeSpan Delay;
-        public string? Error;
+        public Problem? Error;
     }
     private sealed record Remote(long? Size, bool Ranges, string? ETag, DateTimeOffset? Modified, string? Name);
-    private sealed class DecisionException(string message) : Exception(message);
-    private sealed class RetryException(string message, TimeSpan? delay = null) : Exception(message)
+    private sealed class DecisionException(Problem problem) : ProblemException(problem);
+    private sealed class RetryException(Problem problem, TimeSpan? delay = null) : ProblemException(problem)
     { public TimeSpan? Delay { get; } = delay; }
 
     public DownloadEngine(string? stateDirectory = null, HttpMessageHandler? handler = null, TimeProvider? timeProvider = null)
@@ -55,7 +55,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
             MaxConnectionsPerServer = 256
         })
         { Timeout = Timeout.InfiniteTimeSpan };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("Deneb/1.1");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Deneb/1.2");
         client.DefaultRequestHeaders.AcceptEncoding.ParseAdd("identity");
         foreach (var job in library.Jobs)
         {
@@ -66,7 +66,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
             {
                 using var published = File.OpenRead(job.Target);
                 if (Convert.ToHexString(SHA256.HashData(published)) == job.FinalHash)
-                { job.State = DownloadState.Completed; job.Error = null; continue; }
+                { job.State = DownloadState.Completed; job.Diagnostic = null; continue; }
             }
             for (var i = 0; i < job.Segments.Count; i++)
             {
@@ -78,7 +78,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                     segment.Committed = actual;
                     segment.Complete = false;
                     job.State = DownloadState.NeedsDecision;
-                    job.Error = "Часть сохранённых данных отсутствует. Начните заново.";
+                    job.Diagnostic = new Problem(ProblemCode.MissingParts);
                 }
                 // Bytes beyond the last durable checkpoint were not committed.
                 if (actual > segment.Committed)
@@ -94,12 +94,12 @@ public sealed partial class DownloadEngine : IAsyncDisposable
 
     public Settings GetSettings()
     {
-        lock (gate) return new() { ActiveFiles = library.Settings.ActiveFiles, Connections = library.Settings.Connections, Destination = library.Settings.Destination };
+        lock (gate) return new() { ActiveFiles = library.Settings.ActiveFiles, Connections = library.Settings.Connections, Destination = library.Settings.Destination, Language = library.Settings.Language };
     }
     public void SetSettings(Settings settings)
     {
         settings.Validate();
-        lock (gate) { library.Settings = settings; Save(); }
+        lock (gate) { library.Settings = new() { ActiveFiles = settings.ActiveFiles, Connections = settings.Connections, Destination = settings.Destination, Language = settings.Language }; Save(); }
     }
     public Guid Add(DownloadInput input, string? destination = null, string? name = null)
     {
@@ -107,7 +107,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
         lock (gate)
         {
             var folder = destination ?? library.Settings.Destination;
-            if (!Path.IsPathFullyQualified(folder)) throw new ArgumentException("Папка должна быть абсолютным путём.");
+            if (!Path.IsPathFullyQualified(folder)) throw new ProblemException(ProblemCode.AbsolutePath);
             var job = new DownloadJob { Url = input.Url, Name = name ?? input.Name ?? "", Destination = folder };
             library.Jobs.Add(job);
             Save();
@@ -122,14 +122,14 @@ public sealed partial class DownloadEngine : IAsyncDisposable
             running.TryGetValue(j.Id, out var r);
             var bytes = r == null ? j.Segments.Sum(s => s.Committed) : Interlocked.Read(ref r.Bytes);
             var speed = j.State == DownloadState.Downloading ? r?.Meter.Speed ?? 0 : 0;
-            return new Snapshot(j.Id, string.IsNullOrWhiteSpace(j.Name) ? "Получение имени…" : j.Name, j.State, bytes, j.Total, speed,
-                r == null ? 0 : Volatile.Read(ref r.Connections), InputParser.ValidateUrl(j.Url).Host, j.Error ?? r?.Segments.Values.Select(p => p.Error).FirstOrDefault(e => e != null) ?? r?.Probe.Error, j.Target)
+            return new Snapshot(j.Id, j.Name, j.State, bytes, j.Total, speed,
+                r == null ? 0 : Volatile.Read(ref r.Connections), InputParser.ValidateUrl(j.Url).Host, j.Diagnostic ?? r?.Segments.Values.Select(p => p.Error).FirstOrDefault(e => e != null) ?? r?.Probe.Error, j.Target)
             {
-                Phase = j.State switch { DownloadState.Queued => library.GloballyPaused ? "Общая пауза" : "Очередь", DownloadState.Paused => "Ручная пауза", DownloadState.Completed => "Завершение", DownloadState.Failed => "Ошибка", DownloadState.NeedsDecision => "Требуется решение", _ => r?.Phase == "Проверка сервера" && r.Probe.RetryAt.HasValue ? "Ожидание повтора проверки" : r?.Phase == "Передача" && r.Segments.Values.Any(p => p.RetryAt.HasValue) && !r.Segments.Values.Any(p => p.Phase == "Передача") ? "Ожидание повтора" : r?.Phase ?? "Передача" },
-                Eta = r?.Phase == "Передача" && j.State == DownloadState.Downloading && j.Total.HasValue ? r.Meter.Eta(j.Total.Value - bytes) : null,
+                Phase = j.State switch { DownloadState.Queued => library.GloballyPaused ? DownloadPhase.GlobalPause : DownloadPhase.Queued, DownloadState.Paused => DownloadPhase.ManualPause, DownloadState.Completed => DownloadPhase.Completed, DownloadState.Failed => DownloadPhase.Failed, DownloadState.NeedsDecision => DownloadPhase.NeedsDecision, _ => r?.Phase == DownloadPhase.Probing && r.Probe.RetryAt.HasValue ? DownloadPhase.ProbeRetry : r?.Phase == DownloadPhase.Transferring && r.Segments.Values.Any(p => p.RetryAt.HasValue) && !r.Segments.Values.Any(p => p.Phase == DownloadPhase.Transferring) ? DownloadPhase.Retrying : r?.Phase ?? DownloadPhase.Transferring },
+                Eta = r?.Phase == DownloadPhase.Transferring && j.State == DownloadState.Downloading && j.Total.HasValue ? r.Meter.Eta(j.Total.Value - bytes) : null,
                 Retry = r?.Probe.Retry ?? 0,
                 RetryIn = RetryRemaining(r?.Probe),
-                Segments = j.Segments.Select((s, i) => { var p = r?.Segments.GetValueOrDefault(i); return new SegmentSnapshot(i + 1, s.Start, s.End, p?.Bytes ?? s.Committed, s.Complete, s.Complete ? "Готово" : j.State != DownloadState.Downloading ? "Остановлен" : p?.Phase ?? "Ожидание", p?.Retry ?? 0, RetryRemaining(p)); }).ToArray()
+                Segments = j.Segments.Select((s, i) => { var p = r?.Segments.GetValueOrDefault(i); return new SegmentSnapshot(i + 1, s.Start, s.End, p?.Bytes ?? s.Committed, s.Complete, s.Complete ? DownloadPhase.Ready : j.State != DownloadState.Downloading ? DownloadPhase.Stopped : p?.Phase ?? DownloadPhase.Waiting, p?.Retry ?? 0, RetryRemaining(p)); }).ToArray()
             };
         }).ToArray();
     }
@@ -159,14 +159,14 @@ public sealed partial class DownloadEngine : IAsyncDisposable
         {
             var j = Find(id);
             if (j.State is not (DownloadState.Paused or DownloadState.Failed) || running.ContainsKey(id)) return;
-            j.State = DownloadState.Queued; j.Error = null; Save();
+            j.State = DownloadState.Queued; j.Diagnostic = null; Save();
         }
     }
     public async Task ReplaceUrlAsync(Guid id, string url)
     {
         InputParser.ValidateUrl(url);
         await PauseAsync(id);
-        lock (gate) { var j = Find(id); j.Url = url; j.Error = null; j.State = DownloadState.Queued; Save(); }
+        lock (gate) { var j = Find(id); j.Url = url; j.Diagnostic = null; j.State = DownloadState.Queued; Save(); }
     }
     public async Task RestartAsync(Guid id)
     {
@@ -178,7 +178,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
             // Keep old bytes recoverable, even after explicit restart.
             if (Directory.Exists(j.PartsDirectory)) Directory.Move(j.PartsDirectory, j.PartsDirectory + ".saved-" + Guid.NewGuid().ToString("N"));
             j.Segments.Clear(); j.ETag = null; j.LastModified = null; j.Total = null; j.FinalHash = null;
-            j.State = DownloadState.Queued; j.Error = null; Save();
+            j.State = DownloadState.Queued; j.Diagnostic = null; Save();
         }
     }
     public async Task RemoveAsync(Guid id, bool deletePartial = false)
@@ -202,7 +202,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
     {
         try { store.Save(library); PersistenceError = null; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        { PersistenceError = "Не удалось сохранить состояние: проверьте место и права доступа."; }
+        { PersistenceError = new Problem(ProblemCode.Persistence); }
     }
     private async Task ScheduleAsync()
     {
@@ -238,7 +238,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
             if (job.Segments.Count > 0 && job.Segments.All(s => s.Complete))
             {
                 await AssembleAsync(job, token);
-                lock (gate) { job.State = DownloadState.Completed; job.Error = null; Save(); }
+                lock (gate) { job.State = DownloadState.Completed; job.Diagnostic = null; Save(); }
                 try { Directory.Delete(job.PartsDirectory, true); } catch (IOException) { }
                 return;
             }
@@ -249,8 +249,8 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                 {
                     var identity = job.ETag != null ? job.ETag == remote.ETag
                         : job.LastModified != null && job.LastModified == remote.Modified && job.Total != null && job.Total == remote.Size;
-                    if (!identity || job.Total != remote.Size) throw new DecisionException("Нельзя подтвердить прежний файл. Замените ссылку или начните заново.");
-                    if (!remote.Ranges) throw new DecisionException("Сервер не поддерживает докачку. Можно начать заново.");
+                    if (!identity || job.Total != remote.Size) throw new DecisionException(new(ProblemCode.IdentityUnknown));
+                    if (!remote.Ranges) throw new DecisionException(new(ProblemCode.NoResume));
                 }
                 job.Total = remote.Size; job.Ranges = remote.Ranges; job.ETag = remote.ETag; job.LastModified = remote.Modified;
                 if (job.Target == null)
@@ -267,7 +267,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                     for (var i = 0; i < count; i++) job.Segments.Add(new() { Start = i * chunk, End = remote.Size.HasValue ? Math.Min(remote.Size.Value, (i + 1) * chunk) - 1 : null });
                 }
                 Save();
-                run.Phase = "Передача";
+                run.Phase = DownloadPhase.Transferring;
                 for (var i = 0; i < job.Segments.Count; i++) run.Segments[i] = new() { Bytes = job.Segments[i].Committed };
             }
             using var siblings = CancellationTokenSource.CreateLinkedTokenSource(token);
@@ -285,21 +285,22 @@ public sealed partial class DownloadEngine : IAsyncDisposable
             catch { if (failure != null) throw failure; throw; }
             token.ThrowIfCancellationRequested();
             await AssembleAsync(job, token);
-            lock (gate) { job.State = DownloadState.Completed; job.Error = null; Save(); }
+            lock (gate) { job.State = DownloadState.Completed; job.Diagnostic = null; Save(); }
             try { Directory.Delete(job.PartsDirectory, true); } catch (IOException) { /* Completed output is already durable. */ }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
-        catch (DecisionException ex) { lock (gate) { job.State = DownloadState.NeedsDecision; job.Error = ex.Message; } }
+        catch (DecisionException ex) { lock (gate) { job.State = DownloadState.NeedsDecision; job.Diagnostic = ex.Problem; } }
         catch (Exception ex)
         {
             lock (gate)
             {
                 job.State = DownloadState.Failed;
-                job.Error = ex switch
+                job.Diagnostic = ex switch
                 {
-                    IOException or UnauthorizedAccessException => "Ошибка диска: проверьте свободное место и права доступа.",
-                    HttpRequestException or RetryException or OperationCanceledException => "Сетевая ошибка после повторных попыток. Можно продолжить позже.",
-                    _ => "Ошибка загрузки: " + ex.GetType().Name
+                    IOException or UnauthorizedAccessException => new Problem(ProblemCode.Disk),
+                    HttpRequestException or RetryException or OperationCanceledException => new Problem(ProblemCode.NetworkExhausted),
+                    ProblemException known => known.Problem,
+                    _ => new Problem(ProblemCode.Unexpected)
                 };
             }
         }
@@ -325,10 +326,10 @@ public sealed partial class DownloadEngine : IAsyncDisposable
         if (response.StatusCode == HttpStatusCode.PartialContent)
         {
             if (range?.Unit != "bytes" || range.From != 0 || range.To != 0 || range.Length is null or <= 0)
-                throw new DecisionException("Сервер вернул неверный Content-Range.");
+                throw new DecisionException(new(ProblemCode.BadRange));
             return new(range.Length, true, StrongTag(response), response.Content.Headers.LastModified, Name(response, url));
         }
-        if (response.StatusCode != HttpStatusCode.OK) throw new DecisionException($"HTTP {(int)response.StatusCode}: загрузка недоступна.");
+        if (response.StatusCode != HttpStatusCode.OK) throw new DecisionException(new(ProblemCode.HttpUnavailable, (int)response.StatusCode));
         return new(response.Content.Headers.ContentLength, false, StrongTag(response), response.Content.Headers.LastModified, Name(response, url));
     }
     private static string? StrongTag(HttpResponseMessage response) => response.Headers.ETag is { IsWeak: false } tag ? tag.ToString() : null;
@@ -343,25 +344,25 @@ public sealed partial class DownloadEngine : IAsyncDisposable
     private static void CheckStatus(HttpResponseMessage response)
     {
         var status = (int)response.StatusCode;
-        if (status is 401 or 403) throw new DecisionException($"HTTP {status}: доступ отклонён. Проверьте или замените ссылку.");
+        if (status is 401 or 403) throw new DecisionException(new(ProblemCode.HttpDenied, status));
         if (status is 408 or 429 || status >= 500)
         {
             var delay = response.Headers.RetryAfter?.Delta ?? (response.Headers.RetryAfter?.Date - DateTimeOffset.UtcNow);
-            throw new RetryException($"HTTP {status}", delay);
+            throw new RetryException(new(ProblemCode.HttpRetry, status), delay);
         }
-        if (status >= 400 && status != 416) throw new DecisionException($"HTTP {status}: файл недоступен.");
+        if (status >= 400 && status != 416) throw new DecisionException(new(ProblemCode.HttpUnavailable, status));
     }
     private TimeSpan? RetryRemaining(Progress? p) => p?.RetryAt is { } at ? TimeSpan.FromSeconds(Math.Max(0, (p.Delay - clock.GetElapsedTime(at)).TotalSeconds)) : null;
     private async Task<T> RetryAsync<T>(Func<Task<T>> action, CancellationToken token, Progress progress)
     {
         for (var attempt = 0; ; attempt++)
         {
-            try { lock (gate) { progress.Phase = "Передача"; progress.RetryAt = null; } return await action(); }
+            try { lock (gate) { progress.Phase = DownloadPhase.Transferring; progress.RetryAt = null; } return await action(); }
             catch (Exception ex) when (!token.IsCancellationRequested && attempt < 10 && ex is HttpRequestException or RetryException or OperationCanceledException)
             {
                 var delay = ex is RetryException { Delay: { } d } ? d : TimeSpan.FromSeconds(Math.Min(60, Math.Pow(2, attempt)));
                 delay = delay < TimeSpan.Zero ? TimeSpan.Zero : delay;
-                lock (gate) { progress.Retry = attempt + 1; progress.Phase = "Ожидание повтора"; progress.Delay = delay; progress.RetryAt = clock.GetTimestamp(); progress.Error = ex is RetryException ? ex.Message : ex is OperationCanceledException ? "Истекло время ожидания ответа." : "Сетевая ошибка соединения."; }
+                lock (gate) { progress.Retry = attempt + 1; progress.Phase = DownloadPhase.Retrying; progress.Delay = delay; progress.RetryAt = clock.GetTimestamp(); progress.Error = ex is RetryException retry ? retry.Problem : ex is OperationCanceledException ? new Problem(ProblemCode.Timeout) : new Problem(ProblemCode.Network); }
                 await Task.Delay(delay, clock, token);
             }
         }
@@ -384,7 +385,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                     }
                     var offset = segment.Committed;
                     if (offset > 0 && (!job.Ranges || (job.ETag == null && job.LastModified == null)))
-                        throw new DecisionException("Без валидатора и поддержки Range безопасная докачка невозможна. Начните заново.");
+                        throw new DecisionException(new(ProblemCode.UnsafeResume));
                     using var request = new HttpRequestMessage(HttpMethod.Get, job.Url);
                     if (job.Ranges)
                     {
@@ -398,15 +399,15 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                     {
                         var cr = response.Content.Headers.ContentRange;
                         if (response.StatusCode != HttpStatusCode.PartialContent || cr?.Unit != "bytes" || cr.From != segment.Start + offset || cr.To != segment.End || cr.Length != job.Total)
-                            throw new DecisionException("Сервер изменил файл или диапазон. Данные не были дописаны; требуется решение.");
+                            throw new DecisionException(new(ProblemCode.RangeChanged));
                         if (job.ETag != null && StrongTag(response) is { } tag && tag != job.ETag)
-                            throw new DecisionException("ETag файла изменился. Требуется начать заново.");
+                            throw new DecisionException(new(ProblemCode.TagChanged));
                     }
-                    else if (response.StatusCode != HttpStatusCode.OK) throw new DecisionException("Неожиданный ответ сервера.");
+                    else if (response.StatusCode != HttpStatusCode.OK) throw new DecisionException(new(ProblemCode.UnexpectedResponse));
                     if (job.ETag != null && StrongTag(response) is { } responseTag && responseTag != job.ETag)
-                        throw new DecisionException("Файл изменился между запросами. Начните заново.");
+                        throw new DecisionException(new(ProblemCode.FileChanged));
                     if (job.ETag == null && job.LastModified.HasValue && response.Content.Headers.LastModified is { } modified && modified != job.LastModified)
-                        throw new DecisionException("Дата изменения файла изменилась. Начните заново.");
+                        throw new DecisionException(new(ProblemCode.ModifiedChanged));
                     await using var output = new FileStream(Part(job, index), FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read, 65536, FileOptions.Asynchronous);
                     output.SetLength(offset); output.Position = offset;
                     await using var input = await response.Content.ReadAsStreamAsync(token);
@@ -422,11 +423,11 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                             {
                                 idle.CancelAfter(TimeSpan.FromSeconds(30));
                                 try { read = await input.ReadAsync(buffer, idle.Token); }
-                                catch (IOException) { throw new RetryException("Соединение оборвалось."); }
+                                catch (IOException) { throw new RetryException(new(ProblemCode.Disconnected)); }
                             }
                             if (read == 0) break;
                             if (segment.End.HasValue && written + read > segment.End.Value - segment.Start + 1)
-                                throw new DecisionException("Сервер прислал больше данных, чем заявлено.");
+                                throw new DecisionException(new(ProblemCode.TooMuchData));
                             await output.WriteAsync(buffer.AsMemory(0, read), token);
                             written += read; Interlocked.Add(ref run.Bytes, read); run.Meter.Add(read);
                             lock (gate) run.Segments[index].Bytes = written;
@@ -438,7 +439,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                             }
                         }
                         if (segment.End.HasValue && written != segment.End.Value - segment.Start + 1)
-                            throw new RetryException("Неполный ответ сервера.");
+                            throw new RetryException(new(ProblemCode.IncompleteResponse));
                         output.Flush(true);
                         lock (gate) { segment.Committed = written; segment.Complete = true; Save(); }
                         return true;
@@ -453,33 +454,33 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                 finally { Interlocked.Decrement(ref run.Connections); }
             }, token, run.Segments[index]);
         }
-        finally { lock (gate) run.Segments[index].Phase = segment.Complete ? "Готово" : "Остановлен"; }
+        finally { lock (gate) run.Segments[index].Phase = segment.Complete ? DownloadPhase.Ready : DownloadPhase.Stopped; }
     }
     private async Task AssembleAsync(DownloadJob job, CancellationToken token)
     {
-        lock (gate) if (running.TryGetValue(job.Id, out var active)) active.Phase = "Сборка";
+        lock (gate) if (running.TryGetValue(job.Id, out var active)) active.Phase = DownloadPhase.Assembling;
         var assembled = Path.Combine(job.PartsDirectory, "assembled.tmp");
         await using (var output = new FileStream(assembled, FileMode.Create, FileAccess.Write, FileShare.None, 65536, FileOptions.Asynchronous))
         {
             for (var i = 0; i < job.Segments.Count; i++)
             {
                 await using var input = File.OpenRead(Part(job, i));
-                if (input.Length != job.Segments[i].Committed) throw new DecisionException("Размер сегмента не совпадает с сохранённым состоянием.");
+                if (input.Length != job.Segments[i].Committed) throw new DecisionException(new(ProblemCode.SegmentSize));
                 await input.CopyToAsync(output, token);
             }
-            if (job.Total.HasValue && output.Length != job.Total) throw new DecisionException("Итоговый размер файла не совпадает.");
+            if (job.Total.HasValue && output.Length != job.Total) throw new DecisionException(new(ProblemCode.FinalSize));
             output.Flush(true);
             lock (gate) { job.Total ??= output.Length; Save(); }
         }
         string hash;
-        lock (gate) if (running.TryGetValue(job.Id, out var active)) active.Phase = "Проверка файла";
+        lock (gate) if (running.TryGetValue(job.Id, out var active)) active.Phase = DownloadPhase.Verifying;
         using (var input = File.OpenRead(assembled)) hash = Convert.ToHexString(await SHA256.HashDataAsync(input, token));
         lock (gate)
         {
             if (File.Exists(job.Target)) job.Target = UniqueTarget(job);
             job.FinalHash = hash;
             Save();
-            if (PersistenceError != null) throw new IOException("Не удалось сохранить метаданные готового файла.");
+            if (PersistenceError != null) throw new ProblemException(ProblemCode.FinalMetadata);
             File.Move(assembled, job.Target!); // Never overwrite an existing destination.
         }
     }

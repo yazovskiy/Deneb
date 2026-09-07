@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <data name="WindowTitle" xml:space="preserve"><value>Deneb — downloads</value></data>
+  <data name="Keys" xml:space="preserve"><value>A add · Space pause · Enter details · F6 pause all · F1 help · Q quit</value></data>
+  <data name="Batch" xml:space="preserve"><value>Processed: {0}, skipped: {1}, failed: {2}</value></data>
+  <data name="ClearTitle" xml:space="preserve"><value>Clear completed</value></data>
+  <data name="ClearPrompt" xml:space="preserve"><value>Remove all completed entries? Files will stay on disk.</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Clear" xml:space="preserve"><value>C_lear</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
+  <data name="HelpTitle" xml:space="preserve"><value>Deneb keys</value></data>
+  <data name="Help" xml:space="preserve"><value>A — add; U — replace URL; F2 — settings
+Insert — mark row; Space — pause/resume selected
+F3/F4 — move up/down; F5 — download next (does not resume)
+F6 — pause/resume all
+Enter — details; Delete — remove selected
+O — open; F7 — Finder; F8 — copy path
+F9 — clear completed; Q/Ctrl+C — quit</value></data>
+  <data name="File" xml:space="preserve"><value>File</value></data>
+  <data name="State" xml:space="preserve"><value>State</value></data>
+  <data name="Percent" xml:space="preserve"><value>%</value></data>
+  <data name="Volume" xml:space="preserve"><value>Downloaded / Total</value></data>
+  <data name="Speed" xml:space="preserve"><value>Speed</value></data>
+  <data name="Remaining" xml:space="preserve"><value>Remaining</value></data>
+  <data name="Connections" xml:space="preserve"><value>Connections</value></data>
+  <data name="Unknown" xml:space="preserve"><value>?</value></data>
+  <data name="Dash" xml:space="preserve"><value>—</value></data>
+  <data name="Busy" xml:space="preserve"><value>Working…</value></data>
+  <data name="GlobalBanner" xml:space="preserve"><value>GLOBAL PAUSE · </value></data>
+  <data name="Summary" xml:space="preserve"><value>{0}Tasks: {1} · Marked: {2} · {3} · {4}</value></data>
+  <data name="GiB" xml:space="preserve"><value>GiB</value></data>
+  <data name="MiB" xml:space="preserve"><value>MiB</value></data>
+  <data name="KiB" xml:space="preserve"><value>KiB</value></data>
+  <data name="SizeFormat" xml:space="preserve"><value>{0:0.0} {1}</value></data>
+  <data name="Rate" xml:space="preserve"><value>{0}/s</value></data>
+  <data name="Days" xml:space="preserve"><value>{0} d </value></data>
+  <data name="ErrorTitle" xml:space="preserve"><value>Error</value></data>
+  <data name="Ok" xml:space="preserve"><value>OK</value></data>
+  <data name="Check" xml:space="preserve"><value>Preview</value></data>
+  <data name="AddTitle" xml:space="preserve"><value>URLs / Android rows — one per line</value></data>
+  <data name="FolderLabel" xml:space="preserve"><value>Folder:</value></data>
+  <data name="NameLabel" xml:space="preserve"><value>Name*:</value></data>
+  <data name="AutomaticName" xml:space="preserve"><value>Automatic name</value></data>
+  <data name="GettingName" xml:space="preserve"><value>Getting file name…</value></data>
+  <data name="AddConfirm" xml:space="preserve"><value>Add to queue?</value></data>
+  <data name="Add" xml:space="preserve"><value>Add</value></data>
+  <data name="Back" xml:space="preserve"><value>Back</value></data>
+  <data name="Restart" xml:space="preserve"><value>Start over</value></data>
+  <data name="OpenFile" xml:space="preserve"><value>Open file</value></data>
+  <data name="Reveal" xml:space="preserve"><value>Show in _Finder</value></data>
+  <data name="CopyPath" xml:space="preserve"><value>Copy _path</value></data>
+  <data name="DetailsTitle" xml:space="preserve"><value>Download details</value></data>
+  <data name="RestartTitle" xml:space="preserve"><value>Start over?</value></data>
+  <data name="RestartPrompt" xml:space="preserve"><value>Old parts will be saved separately.</value></data>
+  <data name="Start" xml:space="preserve"><value>Start</value></data>
+  <data name="Details" xml:space="preserve"><value>{0}
+{1} · {2} / {3}
+Speed: {4} · Remaining: {5} · Connections: {6}
+Source: {7}
+File: {8}
+Server check: retry {9}/10 · wait {10}
+{11}</value></data>
+  <data name="Number" xml:space="preserve"><value>No.</value></data>
+  <data name="Range" xml:space="preserve"><value>Range</value></data>
+  <data name="Retry" xml:space="preserve"><value>Retry</value></data>
+  <data name="RetryIn" xml:space="preserve"><value>In</value></data>
+  <data name="RetryFormat" xml:space="preserve"><value>{0}/10</value></data>
+  <data name="Replace" xml:space="preserve"><value>Replace</value></data>
+  <data name="ReplaceTitle" xml:space="preserve"><value>New URL for the same file</value></data>
+  <data name="RemoveTitle" xml:space="preserve"><value>Remove tasks</value></data>
+  <data name="RemovePrompt" xml:space="preserve"><value>Tasks: {0}. Completed files will stay on disk.</value></data>
+  <data name="KeepParts" xml:space="preserve"><value>Keep parts</value></data>
+  <data name="DeleteParts" xml:space="preserve"><value>_Delete parts</value></data>
+  <data name="DeleteTitle" xml:space="preserve"><value>Delete partial data</value></data>
+  <data name="DeletePrompt" xml:space="preserve"><value>Permanently delete partial data for the selected tasks?</value></data>
+  <data name="Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
+  <data name="SettingsTitle" xml:space="preserve"><value>Settings (connections apply to new tasks)</value></data>
+  <data name="ActiveFilesLabel" xml:space="preserve"><value>Simultaneous files:</value></data>
+  <data name="ConnectionsLabel" xml:space="preserve"><value>Connections per file:</value></data>
+  <data name="DestinationLabel" xml:space="preserve"><value>Download folder:</value></data>
+  <data name="LanguageLabel" xml:space="preserve"><value>Language / Язык</value></data>
+  <data name="English" xml:space="preserve"><value>English</value></data>
+  <data name="Russian" xml:space="preserve"><value>Русский</value></data>
+  <data name="CliHelp" xml:space="preserve"><value>deneb — interactive download manager.
+--state-dir PATH: use a separate library
+--version: show version
+--help: show this help
+F2: Language / Язык — English or Русский</value></data>
+  <data name="MissingStatePath" xml:space="preserve"><value>Specify a path after --state-dir.</value></data>
+  <data name="InteractiveRequired" xml:space="preserve"><value>Run Deneb in an interactive terminal.</value></data>
+  <data name="Shutdown" xml:space="preserve"><value>Saving progress and stopping downloads…</value></data>
+  <data name="StartupError" xml:space="preserve"><value>Could not start Deneb: {0}</value></data>
+  <data name="Error_EmptyInput" xml:space="preserve"><value>Add at least one HTTP/HTTPS URL.</value></data>
+  <data name="Error_InvalidUrl" xml:space="preserve"><value>Enter a valid HTTP/HTTPS URL without credentials in the address.</value></data>
+  <data name="Error_InvalidSettings" xml:space="preserve"><value>Use an absolute destination and between 1 and 16 files/connections.</value></data>
+  <data name="Error_AbsolutePath" xml:space="preserve"><value>Use an absolute destination path.</value></data>
+  <data name="Error_StoreLocked" xml:space="preserve"><value>This Deneb library is already open in another process.</value></data>
+  <data name="Error_UnsupportedStore" xml:space="preserve"><value>Unsupported Deneb library version.</value></data>
+  <data name="Error_CorruptStore" xml:space="preserve"><value>The library and its backup are damaged. Downloaded files are preserved.</value></data>
+  <data name="Error_MissingParts" xml:space="preserve"><value>Some saved data is missing. Start over.</value></data>
+  <data name="Error_Persistence" xml:space="preserve"><value>Could not save state: check free space and permissions.</value></data>
+  <data name="Error_IdentityUnknown" xml:space="preserve"><value>Cannot confirm the original file. Replace the URL or start over.</value></data>
+  <data name="Error_NoResume" xml:space="preserve"><value>The server does not support resuming. You can start over.</value></data>
+  <data name="Error_Disk" xml:space="preserve"><value>Disk error: check free space and permissions.</value></data>
+  <data name="Error_NetworkExhausted" xml:space="preserve"><value>Network error after retries. You can resume later.</value></data>
+  <data name="Error_BadRange" xml:space="preserve"><value>The server returned an invalid Content-Range.</value></data>
+  <data name="Error_UnsafeResume" xml:space="preserve"><value>Safe resume requires a validator and Range support. Start over.</value></data>
+  <data name="Error_RangeChanged" xml:space="preserve"><value>The server changed the file or range. No data was appended; a decision is required.</value></data>
+  <data name="Error_TagChanged" xml:space="preserve"><value>The file ETag changed. Start over.</value></data>
+  <data name="Error_UnexpectedResponse" xml:space="preserve"><value>Unexpected server response.</value></data>
+  <data name="Error_FileChanged" xml:space="preserve"><value>The file changed between requests. Start over.</value></data>
+  <data name="Error_ModifiedChanged" xml:space="preserve"><value>The file modification date changed. Start over.</value></data>
+  <data name="Error_Disconnected" xml:space="preserve"><value>The connection was interrupted.</value></data>
+  <data name="Error_TooMuchData" xml:space="preserve"><value>The server sent more data than expected.</value></data>
+  <data name="Error_IncompleteResponse" xml:space="preserve"><value>Incomplete server response.</value></data>
+  <data name="Error_SegmentSize" xml:space="preserve"><value>The segment size does not match the saved state.</value></data>
+  <data name="Error_FinalSize" xml:space="preserve"><value>The final file size does not match.</value></data>
+  <data name="Error_FinalMetadata" xml:space="preserve"><value>Could not save completed file metadata.</value></data>
+  <data name="Error_Timeout" xml:space="preserve"><value>The response timed out.</value></data>
+  <data name="Error_Network" xml:space="preserve"><value>Network connection error.</value></data>
+  <data name="Error_MissingFile" xml:space="preserve"><value>The file was moved or deleted.</value></data>
+  <data name="Error_SystemCommand" xml:space="preserve"><value>The system command failed.</value></data>
+  <data name="Error_SystemLaunch" xml:space="preserve"><value>Could not start the macOS system command.</value></data>
+  <data name="Error_SingleName" xml:space="preserve"><value>A custom name can only be used with one URL.</value></data>
+  <data name="Error_IntegerSettings" xml:space="preserve"><value>Enter integers between 1 and 16.</value></data>
+  <data name="Error_HttpUnavailable" xml:space="preserve"><value>HTTP {0}: the file is unavailable.</value></data>
+  <data name="Error_HttpDenied" xml:space="preserve"><value>HTTP {0}: access denied. Check or replace the URL.</value></data>
+  <data name="Error_HttpRetry" xml:space="preserve"><value>HTTP {0}</value></data>
+  <data name="Error_Unexpected" xml:space="preserve"><value>Unexpected error. The operation was not completed.</value></data>
+  <data name="Error_Legacy" xml:space="preserve"><value>Message from a previous version: {0}</value></data>
+  <data name="Phase_Queued" xml:space="preserve"><value>Queued</value></data>
+  <data name="Phase_GlobalPause" xml:space="preserve"><value>Global pause</value></data>
+  <data name="Phase_ManualPause" xml:space="preserve"><value>Paused</value></data>
+  <data name="Phase_Completed" xml:space="preserve"><value>Completed</value></data>
+  <data name="Phase_Failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="Phase_NeedsDecision" xml:space="preserve"><value>Decision required</value></data>
+  <data name="Phase_Probing" xml:space="preserve"><value>Checking server</value></data>
+  <data name="Phase_ProbeRetry" xml:space="preserve"><value>Waiting to retry server check</value></data>
+  <data name="Phase_Transferring" xml:space="preserve"><value>Transferring</value></data>
+  <data name="Phase_Retrying" xml:space="preserve"><value>Waiting to retry</value></data>
+  <data name="Phase_Ready" xml:space="preserve"><value>Done</value></data>
+  <data name="Phase_Stopped" xml:space="preserve"><value>Stopped</value></data>
+  <data name="Phase_Waiting" xml:space="preserve"><value>Waiting</value></data>
+  <data name="Phase_Assembling" xml:space="preserve"><value>Assembling</value></data>
+  <data name="Phase_Verifying" xml:space="preserve"><value>Verifying file</value></data>
+</root>
