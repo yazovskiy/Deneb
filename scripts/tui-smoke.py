@@ -69,12 +69,13 @@ with tempfile.TemporaryDirectory(prefix="deneb-tui-") as root:
             if select.select([master], [], [], 0.05)[0]:
                 transcript.extend(os.read(master, 65536))
 
-    def wait_for(text, timeout=10):
+    def wait_for(text, timeout=10, clear=True):
         end = time.monotonic() + timeout
         while time.monotonic() < end:
             plain = re.sub(rb"\x1b\[[0-?]*[ -/]*[@-~]|\x1b[()][A-Z0-9]|\x1b[=>]", b"", transcript)
             if text.encode() in plain:
-                transcript.clear()
+                if clear:
+                    transcript.clear()
                 return
             if select.select([master], [], [], 0.1)[0]:
                 try:
@@ -260,7 +261,10 @@ with tempfile.TemporaryDirectory(prefix="deneb-tui-") as root:
         transcript.clear()
         process = subprocess.Popen([binary, "--state-dir", root], stdin=slave, stdout=slave, stderr=slave, env=env, start_new_session=True)
         os.close(slave)
-        wait_for(tr("Paused", "Ручная пауза"))
+        # A fast runner may paint Paused and Completed in the same first frame.
+        # Retain that frame for both assertions instead of waiting for a repaint
+        # that will never happen once the other job is already complete.
+        wait_for(tr("Paused", "Ручная пауза"), clear=False)
         wait_for(tr("Completed", "Завершение"), 90)
         os.write(master, b" ")
         # Allow shared CI runners to serve the fixture slowly; completion and hashes remain mandatory.
