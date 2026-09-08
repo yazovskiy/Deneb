@@ -197,7 +197,9 @@ with tempfile.TemporaryDirectory(prefix="deneb-tui-") as root:
         # Select Paused through the filter controls, then reset to the full queue.
         os.write(master, b"/")
         wait_for(tr("Search filename", "Поиск по имени"))
-        os.write(master, b"\t\x1b[B\x1b[B\x1b[B \r")
+        for key in (b"\t", b"\x1b[B", b"\x1b[B", b"\x1b[B", b" ", b"\r"):
+            os.write(master, key)
+            pump(0.15)
         pump(0.5)
         os.write(master, b"\x0c")
         pump(0.5)
