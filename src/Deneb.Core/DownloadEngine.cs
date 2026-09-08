@@ -126,7 +126,12 @@ public sealed partial class DownloadEngine : IAsyncDisposable
             if (!Path.IsPathFullyQualified(folder)) throw new ProblemException(ProblemCode.AbsolutePath);
             var job = new DownloadJob { Url = input.Url, Name = name ?? input.Name ?? "", Destination = folder };
             library.Jobs.Add(job);
-            Save();
+            try { store.Save(library); PersistenceError = null; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                library.Jobs.Remove(job); PersistenceError = new(ProblemCode.Persistence);
+                throw new ProblemException(PersistenceError);
+            }
             return job.Id;
         }
     }

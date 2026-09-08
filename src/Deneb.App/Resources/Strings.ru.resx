@@ -3,15 +3,17 @@
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
   <data name="WindowTitle" xml:space="preserve"><value>Deneb — загрузки</value></data>
-  <data name="Keys" xml:space="preserve"><value>A добавить · Space пауза · Enter детали · F6 общая пауза · F1 помощь · Q выход</value></data>
+  <data name="Keys" xml:space="preserve"><value>A добавить · Space пауза · Enter детали · / поиск · Ctrl+L сброс · F1 помощь · Q выход</value></data>
   <data name="Batch" xml:space="preserve"><value>Обработано: {0}, пропущено: {1}, ошибок: {2}</value></data>
   <data name="ClearTitle" xml:space="preserve"><value>Очистить завершённые</value></data>
-  <data name="ClearPrompt" xml:space="preserve"><value>Убрать все завершённые записи? Файлы останутся на диске.</value></data>
+  <data name="ClearPrompt" xml:space="preserve"><value>Убрать ВСЕ завершённые записи, включая скрытые и неотмеченные? Файлы останутся на диске.</value></data>
   <data name="Cancel" xml:space="preserve"><value>Отмена</value></data>
   <data name="Clear" xml:space="preserve"><value>Очистить</value></data>
   <data name="Close" xml:space="preserve"><value>Закрыть</value></data>
   <data name="HelpTitle" xml:space="preserve"><value>Клавиши Deneb</value></data>
-  <data name="Help" xml:space="preserve"><value>A — добавить; U — заменить URL; F2 — настройки
+  <data name="Help" xml:space="preserve"><value>/ — поиск/фильтр; Ctrl+L — сброс. Массовые действия: только видимые отметки, иначе текущая строка.
+F3/F4 меняют полный порядок, включая скрытых соседей. F9 очищает все завершённые записи.
+A — добавить; U — заменить URL; F2 — настройки
 Insert — отметить строку; Space — пауза/продолжение выбранных
 F3/F4 — выше/ниже; F5 — скачать следующей (без снятия паузы)
 F6 — общая пауза/продолжение
@@ -87,8 +89,18 @@ F11 / F12 — подключиться / запустить при потере 
   <data name="LanguageLabel" xml:space="preserve"><value>Language / Язык</value></data>
   <data name="English" xml:space="preserve"><value>English</value></data>
   <data name="Russian" xml:space="preserve"><value>Русский</value></data>
-  <data name="CliHelp" xml:space="preserve"><value>Deneb 2.1 — фоновый менеджер загрузок
-Использование: deneb [start|status|pause|resume|stop] [--state-dir ПУТЬ]
+  <data name="CliHelp" xml:space="preserve"><value>Deneb 2.2 — фоновый менеджер загрузок
+Использование: deneb КОМАНДА [--state-dir ПУТЬ] [--json]
+add URL... | add --stdin [--destination ПУТЬ] [--name ИМЯ (одна задача)]
+list [--search ТЕКСТ] [--filter all|active|queued|paused|completed|attention]
+show ID | pause [ID...] | resume [ID...] | remove ID... [--delete-partial --yes]
+start | status | stop
+ID: полный UUID или уникальный шестнадцатеричный префикс от 8 символов.
+Отсутствующий фон запускают только start, add и интерфейс.
+remove сохраняет файлы и части без обоих флагов удаления; итоговые файлы не удаляются никогда.
+stdin принимает ссылки и Android-строки без URL в истории оболочки. Режимы ввода несовместимы.
+JSON schemaVersion 1: стабильные английские состояния и числовые байты; исходные URL не выводятся.
+Коды выхода: 0 успех/пропуск; 1 ошибка/неизвестный результат; 2 неверный ввод; 3 частичная ошибка.
 Без команды: открыть интерфейс, при необходимости запустить фон.
 Q / Ctrl+C: закрыть только интерфейс. F10: остановить Deneb с подтверждением.
 start: запустить фон; status: состояние; pause/resume: только общая пауза; stop: сохранить и остановить.
@@ -184,4 +196,30 @@ F2: максимум соединений на файл (применяется 
   <data name="DiskDetails" xml:space="preserve"><value>Проверка диска: свободно {0}; нужно {1}; другие задачи {2}; запас {3}.</value></data>
   <data name="DiskUnknown" xml:space="preserve"><value>Размер неизвестен: место проверяется по мере записи с учётом сборки.</value></data>
   <data name="DiskResumeHint" xml:space="preserve"><value>Освободите место, закройте диалог и нажмите Space. Автопродолжения нет.</value></data>
+  <data name="CliInvalid" xml:space="preserve"><value>Неверная команда или параметры. Используйте deneb --help.</value></data>
+  <data name="CliDeleteConfirm" xml:space="preserve"><value>Удаление частей требует одновременно --delete-partial и --yes.</value></data>
+  <data name="CliId" xml:space="preserve"><value>Укажите полный UUID или уникальный шестнадцатеричный префикс от 8 символов. Каждый ID должен соответствовать одной задаче.</value></data>
+  <data name="CliSingleName" xml:space="preserve"><value>--name допускается только для одной загрузки.</value></data>
+  <data name="CliInvalidUrl" xml:space="preserve"><value>Укажите корректные HTTP/HTTPS-ссылки или строки загрузок Android.</value></data>
+  <data name="CliUnknown" xml:space="preserve"><value>Связь потеряна: результат команды неизвестен. Проверьте очередь перед повтором.</value></data>
+  <data name="CliBatchFailed" xml:space="preserve"><value>Часть задач не удалось обработать.</value></data>
+  <data name="CliRunning" xml:space="preserve"><value>Фоновый процесс запущен.</value></data>
+  <data name="CliQueue" xml:space="preserve"><value>Очередь: {0} {1}</value></data>
+  <data name="CliAdded" xml:space="preserve"><value>Добавлено: {0}</value></data>
+  <data name="CliProcessed" xml:space="preserve"><value>Обработано: {0}</value></data>
+  <data name="CliSkipped" xml:space="preserve"><value>Пропущено: {0}</value></data>
+  <data name="CliFailed" xml:space="preserve"><value>Неуспешно: {0}</value></data>
+  <data name="CliInputFailed" xml:space="preserve"><value>Элемент №{0}: ошибка или неизвестный результат. Не отправлены (номера элементов): {1}</value></data>
+  <data name="CliDetails" xml:space="preserve"><value>Источник: {0}
+Путь: {1}
+Осталось: {2}; соединения: {3}/{4}</value></data>
+  <data name="CliSegment" xml:space="preserve"><value>Сегмент {0}: {1}–{2}; {3}; {4}; повтор {5}/10; следующий: {6}</value></data>
+  <data name="SearchTitle" xml:space="preserve"><value>Поиск по имени / фильтр · Ctrl+L сброс</value></data>
+  <data name="QueueSummary" xml:space="preserve"><value>{0}/{1} | отметки {2} (+{3} скрытых) | {4} | {5}</value></data>
+  <data name="Filter_all" xml:space="preserve"><value>Все</value></data>
+  <data name="Filter_active" xml:space="preserve"><value>Активные</value></data>
+  <data name="Filter_queued" xml:space="preserve"><value>Ожидающие</value></data>
+  <data name="Filter_paused" xml:space="preserve"><value>Приостановленные</value></data>
+  <data name="Filter_completed" xml:space="preserve"><value>Завершённые</value></data>
+  <data name="Filter_attention" xml:space="preserve"><value>Требуют внимания</value></data>
 </root>

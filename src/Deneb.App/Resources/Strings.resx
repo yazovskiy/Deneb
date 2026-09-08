@@ -3,15 +3,17 @@
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
   <data name="WindowTitle" xml:space="preserve"><value>Deneb — downloads</value></data>
-  <data name="Keys" xml:space="preserve"><value>A add · Space pause · Enter details · F6 pause all · F1 help · Q quit</value></data>
+  <data name="Keys" xml:space="preserve"><value>A add · Space pause · Enter details · / search · Ctrl+L reset · F1 help · Q quit</value></data>
   <data name="Batch" xml:space="preserve"><value>Processed: {0}, skipped: {1}, failed: {2}</value></data>
   <data name="ClearTitle" xml:space="preserve"><value>Clear completed</value></data>
-  <data name="ClearPrompt" xml:space="preserve"><value>Remove all completed entries? Files will stay on disk.</value></data>
+  <data name="ClearPrompt" xml:space="preserve"><value>Remove ALL completed entries, including hidden and unmarked ones? Files will stay on disk.</value></data>
   <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
   <data name="Clear" xml:space="preserve"><value>C_lear</value></data>
   <data name="Close" xml:space="preserve"><value>Close</value></data>
   <data name="HelpTitle" xml:space="preserve"><value>Deneb keys</value></data>
-  <data name="Help" xml:space="preserve"><value>A — add; U — replace URL; F2 — settings
+  <data name="Help" xml:space="preserve"><value>/ — search/filter; Ctrl+L — reset. Bulk actions affect visible marks only, otherwise the current row.
+F3/F4 move in the full queue, including hidden neighbours. F9 clears all completed entries.
+A — add; U — replace URL; F2 — settings
 Insert — mark row; Space — pause/resume selected
 F3/F4 — move up/down; F5 — download next (does not resume)
 F6 — pause/resume all
@@ -87,8 +89,18 @@ Server check: retry {9}/10 · wait {10}
   <data name="LanguageLabel" xml:space="preserve"><value>Language / Язык</value></data>
   <data name="English" xml:space="preserve"><value>English</value></data>
   <data name="Russian" xml:space="preserve"><value>Русский</value></data>
-  <data name="CliHelp" xml:space="preserve"><value>Deneb 2.1 — background download manager
-Usage: deneb [start|status|pause|resume|stop] [--state-dir PATH]
+  <data name="CliHelp" xml:space="preserve"><value>Deneb 2.2 — background download manager
+Usage: deneb COMMAND [--state-dir PATH] [--json]
+add URL... | add --stdin [--destination PATH] [--name NAME (one task only)]
+list [--search TEXT] [--filter all|active|queued|paused|completed|attention]
+show ID | pause [ID...] | resume [ID...] | remove ID... [--delete-partial --yes]
+start | status | stop
+IDs: full UUID or unique hexadecimal prefix of at least 8 characters.
+Only start, add and the interface start an absent background process.
+remove preserves files and parts unless both deletion flags are supplied; final files are never deleted.
+stdin accepts URLs or Android rows and avoids URLs in shell history. Input modes cannot be combined.
+JSON schemaVersion 1 uses stable English states and numeric bytes; no source URLs are printed.
+Exit codes: 0 success/skipped; 1 failure/unknown outcome; 2 invalid input; 3 partial failure.
 Without a command: connect the interface, starting the background process if needed.
 Q / Ctrl+C: close interface only. F10: stop Deneb with confirmation.
 start: start background; status: inspect; pause/resume: global pause only; stop: save and stop.
@@ -184,4 +196,30 @@ F2: maximum connections per file (applies live), language and settings.
   <data name="DiskDetails" xml:space="preserve"><value>Disk check: free {0}; needed {1}; other tasks {2}; safety {3}.</value></data>
   <data name="DiskUnknown" xml:space="preserve"><value>Unknown file size: space is checked incrementally, including assembly.</value></data>
   <data name="DiskResumeHint" xml:space="preserve"><value>Free disk space, close this dialog and press Space to retry. No automatic resume.</value></data>
+  <data name="CliInvalid" xml:space="preserve"><value>Invalid command or options. Use deneb --help.</value></data>
+  <data name="CliDeleteConfirm" xml:space="preserve"><value>Deleting parts requires both --delete-partial and --yes.</value></data>
+  <data name="CliId" xml:space="preserve"><value>Use a full UUID or a unique hexadecimal prefix of at least 8 characters. Every ID must match one task.</value></data>
+  <data name="CliSingleName" xml:space="preserve"><value>--name requires exactly one download.</value></data>
+  <data name="CliInvalidUrl" xml:space="preserve"><value>Enter valid HTTP/HTTPS URLs or Android download rows.</value></data>
+  <data name="CliUnknown" xml:space="preserve"><value>Connection lost: the command result is unknown. Check the queue before retrying.</value></data>
+  <data name="CliBatchFailed" xml:space="preserve"><value>Some tasks could not be processed.</value></data>
+  <data name="CliRunning" xml:space="preserve"><value>Background process is running.</value></data>
+  <data name="CliQueue" xml:space="preserve"><value>Queue: {0} {1}</value></data>
+  <data name="CliAdded" xml:space="preserve"><value>Added: {0}</value></data>
+  <data name="CliProcessed" xml:space="preserve"><value>Processed: {0}</value></data>
+  <data name="CliSkipped" xml:space="preserve"><value>Skipped: {0}</value></data>
+  <data name="CliFailed" xml:space="preserve"><value>Failed: {0}</value></data>
+  <data name="CliInputFailed" xml:space="preserve"><value>Input #{0} failed or has an unknown result. Not sent (input numbers): {1}</value></data>
+  <data name="CliDetails" xml:space="preserve"><value>Source: {0}
+Path: {1}
+ETA: {2}; connections: {3}/{4}</value></data>
+  <data name="CliSegment" xml:space="preserve"><value>Segment {0}: {1}–{2}; {3}; {4}; retry {5}/10; next: {6}</value></data>
+  <data name="SearchTitle" xml:space="preserve"><value>Search filename / filter · Ctrl+L resets</value></data>
+  <data name="QueueSummary" xml:space="preserve"><value>{0}/{1} | marked {2} (+{3} hidden) | {4} | {5}</value></data>
+  <data name="Filter_all" xml:space="preserve"><value>All</value></data>
+  <data name="Filter_active" xml:space="preserve"><value>Active</value></data>
+  <data name="Filter_queued" xml:space="preserve"><value>Queued</value></data>
+  <data name="Filter_paused" xml:space="preserve"><value>Paused</value></data>
+  <data name="Filter_completed" xml:space="preserve"><value>Completed</value></data>
+  <data name="Filter_attention" xml:space="preserve"><value>Attention</value></data>
 </root>

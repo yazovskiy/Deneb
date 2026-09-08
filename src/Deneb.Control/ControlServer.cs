@@ -64,7 +64,7 @@ public sealed class ControlServer(LocalEndpoint endpoint)
                     using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
                     timeout.CancelAfter(TimeSpan.FromSeconds(30));
                     var request = await Framing.ReadAsync<Request>(stream, timeout.Token);
-                    if (request.Protocol != 2 || request.Version != "2.1.0")
+                    if (request.Protocol != 3 || request.Version != "2.2.0")
                     { await Framing.WriteAsync(stream, new Response(request.Id, new(ProblemCode.Incompatible)), timeout.Token); return; }
                     if (!greeted)
                     {
@@ -104,10 +104,10 @@ public sealed class ControlServer(LocalEndpoint endpoint)
     }
     private async Task<Response> ExecuteAsync(Request r, DownloadEngine e)
     {
-        BatchResult? batch = null; string? url = null;
+        BatchResult? batch = null; string? url = null; Guid? addedId = null;
         switch (r.Command)
         {
-            case Command.Add: e.Add(r.Input ?? throw new ProblemException(ProblemCode.Protocol), r.Destination, r.Name); break;
+            case Command.Add: addedId = e.Add(r.Input ?? throw new ProblemException(ProblemCode.Protocol), r.Destination, r.Name); break;
             case Command.Settings: e.SetSettings(r.Settings ?? throw new ProblemException(ProblemCode.Protocol)); break;
             case Command.Url: url = e.GetUrl(r.Job); break;
             case Command.Replace: await e.ReplaceUrlAsync(r.Job, r.Url ?? ""); break;
@@ -123,6 +123,6 @@ public sealed class ControlServer(LocalEndpoint endpoint)
             case Command.Stop: break;
             default: throw new ProblemException(ProblemCode.Protocol);
         }
-        return new(r.Id, State: State(e), Batch: batch, Url: url);
+        return new(r.Id, State: State(e), Batch: batch, Url: url, AddedId: addedId);
     }
 }

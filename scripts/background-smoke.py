@@ -64,7 +64,7 @@ with tempfile.TemporaryDirectory(prefix="deneb-background-") as root:
                 data += block
             return data
         def call(self, command, **values):
-            data = json.dumps(dict(Id=str(uuid.uuid4()), Protocol=2, Version="2.1.0", Command=command, **values)).encode()
+            data = json.dumps(dict(Id=str(uuid.uuid4()), Protocol=3, Version="2.2.0", Command=command, **values)).encode()
             self.stream.sendall(struct.pack("<i", len(data))+data)
             result = json.loads(self.read(struct.unpack("<i", self.read(4))[0]))
             assert result["Error"] is None, result

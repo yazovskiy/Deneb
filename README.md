@@ -21,7 +21,26 @@ Queues, parallel connections and safe resume — with a persistent background pr
   &nbsp; · &nbsp; <a href="CHANGELOG.md">Changelog (Russian)</a>
 </p>
 
-## Version 2.1 — disk safety and shared speed limit
+## Version 2.2 — CLI and queue search (release preparation)
+
+```sh
+deneb add 'https://example.org/file.zip' --destination ./downloads
+deneb add --stdin < links.txt
+deneb list --search film --filter active
+deneb list --json
+deneb show TASK_ID
+deneb pause TASK_ID
+deneb resume TASK_ID
+deneb remove TASK_ID
+```
+
+`add` starts an absent background process; list/show and task actions do not. Use a full UUID or a unique hexadecimal prefix (8+ characters). `pause`/`resume` without IDs still control global pause. Removal preserves files and parts; deleting unfinished parts requires both `--delete-partial --yes`, and never deletes final files. Prefer stdin for private URLs to avoid shell history. Do not retry a command with an unknown result before checking the queue.
+
+In the UI, **/** opens filename search and a state filter; **Ctrl+L** resets both. Hidden marks survive, but bulk actions target only visible marks (or the current visible row). F3/F4 move in the full queue; F9 clears all completed entries including hidden ones. Search is session-only. See the [CLI / JSON reference](docs/cli.md).
+
+**Upgrade:** stop the old background process with the old binary (`deneb stop`). Version 2.2 uses IPC v3 and unchanged storage v5. Published download links below still point to 2.1 until 2.2 acceptance and publication.
+
+## Disk safety and shared speed limit
 
 **F2 → Total speed limit** sets one cap for all downloads, in KiB/s or MiB/s. Fractions follow the selected language; `0` means unlimited. Changes apply after saving without restarting transfers. The footer shows the cap. Headers/TLS and OS buffers are outside this body-read limit; assembly and hashing are not throttled.
 
@@ -29,7 +48,7 @@ Before downloading a known-size file, Deneb budgets the remaining parts **plus t
 
 If space runs low, the task pauses and keeps confirmed parts. Free space, then press **Space** on that task to resume. Removing global pause or restarting Deneb does not resume disk-paused tasks. Details show the last space check; inability to inspect the volume is reported separately.
 
-Stop the old background process before upgrading. Storage v5 preserves v1–v4 queues and parts with separate backups, defaults the speed cap to unlimited and keeps v4 part names/IDs unchanged. IPC v2 rejects the older background process. Do not open a v5 store in 2.0 or earlier.
+Stop the old background process before upgrading. Storage v5 preserves v1–v4 queues and parts with separate backups, defaults the speed cap to unlimited and keeps v4 part names/IDs unchanged. IPC v3 rejects the older background process. Do not open a v5 store in 2.0 or earlier.
 
 Download Deneb 2.1.0 below: stable on macOS, experimental on Windows and Linux.
 

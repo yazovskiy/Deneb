@@ -172,6 +172,37 @@ with tempfile.TemporaryDirectory(prefix="deneb-tui-") as root:
         paused_id = next(j["Id"] for j in before["Jobs"] if j["State"] == 2)
         active = next(j for j in before["Jobs"] if j["Id"] != paused_id)
         assert active["State"] == 1, before
+        # Hide the marked paused task: Space must affect only the visible current task.
+        os.write(master, b"/")
+        wait_for(tr("Search filename", "Поиск по имени"))
+        os.write(master, (active["Name"] + "\r").encode())
+        pump(0.6)
+        os.write(master, b" ")
+        pump(0.6)
+        filtered = json.loads(Path(root, "state.json").read_text())
+        assert all(j["State"] == 2 for j in filtered["Jobs"]), filtered
+        os.write(master, b" ")
+        pump(0.6)
+        filtered = json.loads(Path(root, "state.json").read_text())
+        assert next(j for j in filtered["Jobs"] if j["Id"] == paused_id)["State"] == 2
+        # Apply an empty-result query, then reset; marks must survive both.
+        os.write(master, b"/")
+        wait_for(tr("Search filename", "Поиск по имени"))
+        os.write(master, b"\x01no-matching-file\r")
+        pump(0.5)
+        os.write(master, b" ")
+        pump(0.2)
+        os.write(master, b"\x0c")
+        pump(0.5)
+        # Select Paused through the filter controls, then reset to the full queue.
+        os.write(master, b"/")
+        wait_for(tr("Search filename", "Поиск по имени"))
+        os.write(master, b"\t\x1b[B\x1b[B\x1b[B \r")
+        pump(0.5)
+        os.write(master, b"\x0c")
+        pump(0.5)
+        os.write(master, b"\x1b[H")
+        pump(0.2)
         before_bytes = sum(s["Committed"] for s in active["Segments"])
         os.write(master, b"\x1bOQ")
         wait_for(tr("Settings", "Настройки"))

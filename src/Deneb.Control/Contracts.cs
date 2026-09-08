@@ -8,8 +8,8 @@ public enum Command { Hello, Snapshot, Add, Settings, Url, Replace, Restart, Pau
 public sealed record Request
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public int Protocol { get; init; } = 2;
-    public string Version { get; init; } = "2.1.0";
+    public int Protocol { get; init; } = 3;
+    public string Version { get; init; } = "2.2.0";
     public Command Command { get; init; }
     public bool Interactive { get; init; }
     public Guid Job { get; init; }
@@ -26,7 +26,7 @@ public sealed record EngineState(Settings Settings, bool GloballyPaused, Snapsho
 {
     public int ProcessId { get; init; } = Environment.ProcessId;
 }
-public sealed record Response(Guid Id, Problem? Error = null, EngineState? State = null, BatchResult? Batch = null, string? Url = null);
+public sealed record Response(Guid Id, Problem? Error = null, EngineState? State = null, BatchResult? Batch = null, string? Url = null, Guid? AddedId = null);
 
 public static class Framing
 {

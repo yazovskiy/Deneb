@@ -1,7 +1,7 @@
-name: Deneb 2.1 packaged acceptance
+name: Deneb 2.2 packaged acceptance
 on:
   push:
-    branches: [work/deneb-2.1]
+    branches: [work/deneb-2.2]
   workflow_dispatch:
 permissions:
   contents: read
@@ -58,7 +58,7 @@ jobs:
       - run: git diff --exit-code -- '**/packages*.lock.json'
       - uses: actions/upload-artifact@v4
         with:
-          name: deneb-2.1.0-${{ matrix.rid }}
+          name: deneb-2.2.0-${{ matrix.rid }}
           if-no-files-found: error
           path: |
             artifacts/release/*.tar.gz
