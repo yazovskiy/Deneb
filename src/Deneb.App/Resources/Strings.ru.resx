@@ -87,7 +87,7 @@ F11 / F12 — подключиться / запустить при потере 
   <data name="LanguageLabel" xml:space="preserve"><value>Language / Язык</value></data>
   <data name="English" xml:space="preserve"><value>English</value></data>
   <data name="Russian" xml:space="preserve"><value>Русский</value></data>
-  <data name="CliHelp" xml:space="preserve"><value>Deneb 2.0 — фоновый менеджер загрузок
+  <data name="CliHelp" xml:space="preserve"><value>Deneb 2.1 — фоновый менеджер загрузок
 Использование: deneb [start|status|pause|resume|stop] [--state-dir ПУТЬ]
 Без команды: открыть интерфейс, при необходимости запустить фон.
 Q / Ctrl+C: закрыть только интерфейс. F10: остановить Deneb с подтверждением.
@@ -172,4 +172,16 @@ F2: максимум соединений на файл (применяется 
   <data name="Constraint_FileSize" xml:space="preserve"><value>Файл меньше 16 МиБ.</value></data>
   <data name="Constraint_Remainder" xml:space="preserve"><value>Недостаточно оставшихся данных для дополнительных соединений.</value></data>
   <data name="Constraint_Retry" xml:space="preserve"><value>Часть диапазонов ожидает повтора.</value></data>
+  <data name="Phase_DiskPause" xml:space="preserve"><value>Пауза: место на диске</value></data>
+  <data name="Error_InsufficientDiskSpace" xml:space="preserve"><value>Недостаточно места на диске. Освободите место и продолжите задачу.</value></data>
+  <data name="Error_DiskSpaceUnavailable" xml:space="preserve"><value>Не удалось проверить место. Проверьте диск и права доступа, затем продолжите.</value></data>
+  <data name="Error_InvalidBandwidth" xml:space="preserve"><value>Введите неотрицательную скорость. 0 — без лимита; минимум — 1 байт/с.</value></data>
+  <data name="BandwidthLabel" xml:space="preserve"><value>Общий лимит скорости</value></data>
+  <data name="BandwidthHint" xml:space="preserve"><value>0 = без лимита. Применяется ко всем загрузкам после сохранения.</value></data>
+  <data name="BandwidthUnlimited" xml:space="preserve"><value>Без лимита скорости</value></data>
+  <data name="BandwidthSummary" xml:space="preserve"><value>Лимит: {0}</value></data>
+  <data name="BandwidthWaiting" xml:space="preserve"><value>Ожидание общего лимита скорости (не сетевой повтор).</value></data>
+  <data name="DiskDetails" xml:space="preserve"><value>Проверка диска: свободно {0}; нужно {1}; другие задачи {2}; запас {3}.</value></data>
+  <data name="DiskUnknown" xml:space="preserve"><value>Размер неизвестен: место проверяется по мере записи с учётом сборки.</value></data>
+  <data name="DiskResumeHint" xml:space="preserve"><value>Освободите место, закройте диалог и нажмите Space. Автопродолжения нет.</value></data>
 </root>

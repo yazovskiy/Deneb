@@ -21,7 +21,19 @@ Queues, parallel connections and safe resume — with a persistent background pr
   &nbsp; · &nbsp; <a href="CHANGELOG.md">Changelog (Russian)</a>
 </p>
 
-## Version 2.0 — background downloads
+## Version 2.1 — disk safety and shared speed limit (release preparation)
+
+**F2 → Total speed limit** sets one cap for all downloads, in KiB/s or MiB/s. Fractions follow the selected language; `0` means unlimited. Changes apply after saving without restarting transfers. The footer shows the cap. Headers/TLS and OS buffers are outside this body-read limit; assembly and hashing are not throttled.
+
+Before downloading a known-size file, Deneb budgets the remaining parts **plus the complete assembly**, sharing a **512 MiB safety reserve per volume** across active tasks. Existing parts are not counted twice. Unknown-size responses are checked as they grow. Space is rechecked during writes and before assembly. External writes, shared storage pools and quotas can still cause disk errors; logical reservations are not physical preallocation.
+
+If space runs low, the task pauses and keeps confirmed parts. Free space, then press **Space** on that task to resume. Removing global pause or restarting Deneb does not resume disk-paused tasks. Details show the last space check; inability to inspect the volume is reported separately.
+
+Stop the old background process before upgrading. Storage v5 preserves v1–v4 queues and parts with separate backups, defaults the speed cap to unlimited and keeps v4 part names/IDs unchanged. IPC v2 rejects the older background process. Do not open a v5 store in 2.0 or earlier.
+
+The download table below points to published 2.0 builds until 2.1 acceptance and publication are complete.
+
+## Background downloads
 
 Closing the interface or Terminal no longer stops downloads. Run `deneb` again to reconnect. **Q / Ctrl+C closes only the interface**; **F10** confirms a full stop.
 
@@ -55,7 +67,7 @@ Extract the archive before running: `./deneb` on Linux or `.\deneb.exe` in Windo
 
 English is the default, including after an upgrade from 1.1. Open **F2 → Language / Язык**, choose **English** or **Русский** using the arrow keys and Space, then save. The interface changes immediately without interrupting downloads, and your choice is remembered.
 
-State is migrated to v4 with a separate backup of the original version. Unrecognized historical errors are labeled “Message from a previous version”. File names and URLs are never translated.
+State is migrated to v5 with a separate backup of the original version. Unrecognized historical errors are labeled “Message from a previous version”. File names and URLs are never translated.
 
 ## Quick start
 
@@ -113,8 +125,8 @@ Mac keyboards may require **Fn** for function keys. If Insert is unavailable, co
 - Default destination: `~/Downloads/Deneb`.
 - Queue and settings: `~/Library/Application Support/Deneb` on macOS; `%LOCALAPPDATA%\Deneb` on Windows; the .NET local application data directory plus `Deneb` on Linux (normally `~/.local/share/Deneb`). Override with `--state-dir`.
 - Existing files are never overwritten. Removing tasks preserves partial data by default; deleting it requires separate confirmation.
-- Stop the old version before upgrading (close 1.x; use `deneb stop` for 2.x). Migration preserves `state.json.v1.bak`, `.v2.bak` or `.v3.bak` without renaming existing parts.
-- A metadata backup alone does **not** make rollback to 1.2 safe after ranges have been split. Do not open a v4 store with an older binary.
+- Stop the old version before upgrading (close 1.x; use `deneb stop` for 2.x). Migration preserves `state.json.v1.bak`, `.v2.bak`, `.v3.bak` or `.v4.bak` without renaming existing parts.
+- A metadata backup alone does **not** make rollback to 1.2 safe after ranges have been split. Do not open a v5 store with an older binary.
 - Segment assembly temporarily needs about twice the file size in free space.
 
 HTTP/HTTPS only. No torrents, website URL extraction, ADB integration or custom Cookie/Authorization headers. Downloads require the background process and an awake computer.

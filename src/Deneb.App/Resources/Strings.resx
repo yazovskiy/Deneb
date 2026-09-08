@@ -87,7 +87,7 @@ Server check: retry {9}/10 · wait {10}
   <data name="LanguageLabel" xml:space="preserve"><value>Language / Язык</value></data>
   <data name="English" xml:space="preserve"><value>English</value></data>
   <data name="Russian" xml:space="preserve"><value>Русский</value></data>
-  <data name="CliHelp" xml:space="preserve"><value>Deneb 2.0 — background download manager
+  <data name="CliHelp" xml:space="preserve"><value>Deneb 2.1 — background download manager
 Usage: deneb [start|status|pause|resume|stop] [--state-dir PATH]
 Without a command: connect the interface, starting the background process if needed.
 Q / Ctrl+C: close interface only. F10: stop Deneb with confirmation.
@@ -172,4 +172,16 @@ F2: maximum connections per file (applies live), language and settings.
   <data name="Constraint_FileSize" xml:space="preserve"><value>File is smaller than 16 MiB.</value></data>
   <data name="Constraint_Remainder" xml:space="preserve"><value>Not enough remaining data for more connections.</value></data>
   <data name="Constraint_Retry" xml:space="preserve"><value>Some ranges are waiting to retry.</value></data>
+  <data name="Phase_DiskPause" xml:space="preserve"><value>Paused: disk space</value></data>
+  <data name="Error_InsufficientDiskSpace" xml:space="preserve"><value>Not enough free disk space. Free space, then resume this task.</value></data>
+  <data name="Error_DiskSpaceUnavailable" xml:space="preserve"><value>Cannot check free disk space. Check the drive and permissions, then resume.</value></data>
+  <data name="Error_InvalidBandwidth" xml:space="preserve"><value>Enter a non-negative speed. Use 0 for unlimited; the minimum positive value is 1 byte/s.</value></data>
+  <data name="BandwidthLabel" xml:space="preserve"><value>Total speed limit</value></data>
+  <data name="BandwidthHint" xml:space="preserve"><value>0 = unlimited. Applies to all downloads immediately after saving.</value></data>
+  <data name="BandwidthUnlimited" xml:space="preserve"><value>No speed limit</value></data>
+  <data name="BandwidthSummary" xml:space="preserve"><value>Limit: {0}</value></data>
+  <data name="BandwidthWaiting" xml:space="preserve"><value>Waiting for the shared speed budget (not a network retry).</value></data>
+  <data name="DiskDetails" xml:space="preserve"><value>Disk check: free {0}; needed {1}; other tasks {2}; safety {3}.</value></data>
+  <data name="DiskUnknown" xml:space="preserve"><value>Unknown file size: space is checked incrementally, including assembly.</value></data>
+  <data name="DiskResumeHint" xml:space="preserve"><value>Free disk space, close this dialog and press Space to retry. No automatic resume.</value></data>
 </root>

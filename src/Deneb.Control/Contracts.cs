@@ -8,8 +8,8 @@ public enum Command { Hello, Snapshot, Add, Settings, Url, Replace, Restart, Pau
 public sealed record Request
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public int Protocol { get; init; } = 1;
-    public string Version { get; init; } = "2.0.0";
+    public int Protocol { get; init; } = 2;
+    public string Version { get; init; } = "2.1.0";
     public Command Command { get; init; }
     public bool Interactive { get; init; }
     public Guid Job { get; init; }

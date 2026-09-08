@@ -3,6 +3,7 @@ namespace Deneb.Core;
 public enum DownloadState { Queued, Downloading, Paused, Completed, NeedsDecision, Failed }
 public sealed class Settings
 {
+    public long BandwidthLimitBytesPerSecond { get; set; }
     public string Language { get; set; } = "en";
     public static string NormalizeLanguage(string? value) => value == "ru" ? "ru" : "en";
     public int ActiveFiles { get; set; } = 2;
@@ -11,6 +12,7 @@ public sealed class Settings
     public void Validate()
     {
         Language = NormalizeLanguage(Language);
+        if (BandwidthLimitBytesPerSecond < 0) throw new ProblemException(ProblemCode.InvalidBandwidth);
         if (ActiveFiles is < 1 or > 16 || Connections is < 1 or > 16 || !Path.IsPathFullyQualified(Destination))
             throw new ProblemException(ProblemCode.InvalidSettings);
     }
@@ -41,13 +43,15 @@ public sealed class DownloadJob
     public Problem? Diagnostic { get; set; }
     [System.Text.Json.Serialization.JsonIgnore]
     public Problem? ConnectionDiagnostic { get; set; }
+    [System.Text.Json.Serialization.JsonIgnore]
+    public DiskSpaceSnapshot? DiskSpace { get; set; }
     public string? FinalHash { get; set; }
     public List<Segment> Segments { get; set; } = [];
     public string PartsDirectory => Path.Combine(Destination, $".deneb-{Id:N}");
 }
 public sealed class Library
 {
-    public int Version { get; set; } = 4;
+    public int Version { get; set; } = 5;
     public bool GloballyPaused { get; set; }
     public Settings Settings { get; set; } = new();
     public List<DownloadJob> Jobs { get; set; } = [];
@@ -55,6 +59,8 @@ public sealed class Library
 public sealed record DownloadInput(string Url, string? Name = null);
 public sealed record Snapshot(Guid Id, string Name, DownloadState State, long Bytes, long? Total, double Speed, int Connections, string Source, Problem? Error, string? Target)
 {
+    public DiskSpaceSnapshot? DiskSpace { get; init; }
+    public bool WaitingForBandwidth { get; init; }
     public DownloadPhase Phase { get; init; }
     public TimeSpan? Eta { get; init; }
     public IReadOnlyList<SegmentSnapshot> Segments { get; init; } = [];

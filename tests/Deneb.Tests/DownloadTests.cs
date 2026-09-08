@@ -246,7 +246,7 @@ public sealed class DownloadTests : IDisposable
             Assert.Throws<ProblemException>(() => new StateStore(StateDir));
         }
         File.WriteAllText(Path.Combine(StateDir, "state.json"), "broken");
-        using var recovered = new StateStore(StateDir); Assert.Equal(4, recovered.Load().Version);
+        using var recovered = new StateStore(StateDir); Assert.Equal(5, recovered.Load().Version);
         recovered.Save(new()); Assert.NotNull(JsonSerializer.Deserialize<Library>(File.ReadAllText(Path.Combine(StateDir, "state.json.bak"))));
     }
     [Fact]

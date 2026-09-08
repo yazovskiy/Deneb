@@ -182,12 +182,14 @@ with tempfile.TemporaryDirectory(prefix="deneb-tui-") as root:
         pump(0.2)
         os.write(master, b" ")
         pump(0.2)
-        os.write(master, b"\t\r")
+        # Language -> total rate -> units -> Save. Set a live 512 KiB/s cap.
+        os.write(master, b"\t\x1b[H\x1b[3~512\t\t\r")
         language = "ru" if language == "en" else "en"
         wait_for(tr("Paused", "Ручная пауза"))
         pump(2.1)
         after = json.loads(Path(root, "state.json").read_text())
         assert after["Settings"]["Language"] == language, after
+        assert after["Settings"]["BandwidthLimitBytesPerSecond"] == 512 * 1024, after
         assert next(j for j in after["Jobs"] if j["Id"] == paused_id)["State"] == 2
         assert next(j for j in after["Jobs"] if j["Id"] != paused_id)["State"] in (1, 3)
         assert sum(s["Committed"] for j in after["Jobs"] if j["Id"] != paused_id for s in j["Segments"]) > before_bytes

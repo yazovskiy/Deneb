@@ -15,6 +15,9 @@ public sealed partial class DownloadEngine : IAsyncDisposable
     private readonly Task scheduler;
     private bool stopping;
     private readonly TimeProvider clock;
+    private readonly BandwidthLimiter bandwidth;
+    private readonly DiskReservations disks;
+    private readonly IDownloadFiles files;
     public Problem? PersistenceError { get; private set; }
     private sealed class Running
     {
@@ -45,12 +48,15 @@ public sealed partial class DownloadEngine : IAsyncDisposable
     private sealed class RetryException(Problem problem, TimeSpan? delay = null) : ProblemException(problem)
     { public TimeSpan? Delay { get; } = delay; }
 
-    public DownloadEngine(string? stateDirectory = null, HttpMessageHandler? handler = null, TimeProvider? timeProvider = null)
+    public DownloadEngine(string? stateDirectory = null, HttpMessageHandler? handler = null, TimeProvider? timeProvider = null, IDiskSpaceService? diskSpaceService = null, IDownloadFiles? downloadFiles = null)
     {
         clock = timeProvider ?? TimeProvider.System;
+        files = downloadFiles ?? new DownloadFiles();
         store = new(stateDirectory ?? StateStore.DefaultDirectory);
         try { library = store.Load(); }
         catch { store.Dispose(); throw; }
+        bandwidth = new(clock, library.Settings.BandwidthLimitBytesPerSecond);
+        disks = new(diskSpaceService ?? new DiskSpaceService(), clock);
         client = new(handler ?? new SocketsHttpHandler
         {
             AllowAutoRedirect = true,
@@ -59,7 +65,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
             MaxConnectionsPerServer = 256
         })
         { Timeout = Timeout.InfiniteTimeSpan };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("Deneb/2.0");
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("Deneb/2.1");
         client.DefaultRequestHeaders.AcceptEncoding.ParseAdd("identity");
         foreach (var job in library.Jobs)
         {
@@ -98,7 +104,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
 
     public Settings GetSettings()
     {
-        lock (gate) return new() { ActiveFiles = library.Settings.ActiveFiles, Connections = library.Settings.Connections, Destination = library.Settings.Destination, Language = library.Settings.Language };
+        lock (gate) return new() { ActiveFiles = library.Settings.ActiveFiles, Connections = library.Settings.Connections, Destination = library.Settings.Destination, Language = library.Settings.Language, BandwidthLimitBytesPerSecond = library.Settings.BandwidthLimitBytesPerSecond };
     }
     public void SetSettings(Settings settings)
     {
@@ -106,8 +112,8 @@ public sealed partial class DownloadEngine : IAsyncDisposable
         lock (gate)
         {
             var previous = library.Settings;
-            library.Settings = new() { ActiveFiles = settings.ActiveFiles, Connections = settings.Connections, Destination = settings.Destination, Language = settings.Language };
-            try { store.Save(library); PersistenceError = null; }
+            library.Settings = new() { ActiveFiles = settings.ActiveFiles, Connections = settings.Connections, Destination = settings.Destination, Language = settings.Language, BandwidthLimitBytesPerSecond = settings.BandwidthLimitBytesPerSecond };
+            try { store.Save(library); PersistenceError = null; bandwidth.SetLimit(settings.BandwidthLimitBytesPerSecond); }
             catch { library.Settings = previous; PersistenceError = new(ProblemCode.Persistence); throw new ProblemException(ProblemCode.Persistence); }
         }
     }
@@ -135,8 +141,10 @@ public sealed partial class DownloadEngine : IAsyncDisposable
             return new Snapshot(j.Id, j.Name, j.State, bytes, j.Total, speed,
                 r == null ? 0 : Volatile.Read(ref r.Connections), InputParser.ValidateUrl(j.Url).Host, j.Diagnostic ?? r?.Segments.Values.Select(p => p.Error).FirstOrDefault(e => e != null) ?? r?.Probe.Error, j.Target)
             {
-                Phase = j.State switch { DownloadState.Queued => library.GloballyPaused ? DownloadPhase.GlobalPause : DownloadPhase.Queued, DownloadState.Paused => DownloadPhase.ManualPause, DownloadState.Completed => DownloadPhase.Completed, DownloadState.Failed => DownloadPhase.Failed, DownloadState.NeedsDecision => DownloadPhase.NeedsDecision, _ => r?.Phase == DownloadPhase.Probing && r.Probe.RetryAt.HasValue ? DownloadPhase.ProbeRetry : r?.Phase == DownloadPhase.Transferring && r.Segments.Values.Any(p => p.RetryAt.HasValue) && !r.Segments.Values.Any(p => p.Phase == DownloadPhase.Transferring) ? DownloadPhase.Retrying : r?.Phase ?? DownloadPhase.Transferring },
+                Phase = j.State switch { DownloadState.Queued => library.GloballyPaused ? DownloadPhase.GlobalPause : DownloadPhase.Queued, DownloadState.Paused => j.Diagnostic?.Code is ProblemCode.InsufficientDiskSpace or ProblemCode.DiskSpaceUnavailable ? DownloadPhase.DiskPause : DownloadPhase.ManualPause, DownloadState.Completed => DownloadPhase.Completed, DownloadState.Failed => DownloadPhase.Failed, DownloadState.NeedsDecision => DownloadPhase.NeedsDecision, _ => r?.Phase == DownloadPhase.Probing && r.Probe.RetryAt.HasValue ? DownloadPhase.ProbeRetry : r?.Phase == DownloadPhase.Transferring && r.Segments.Values.Any(p => p.RetryAt.HasValue) && !r.Segments.Values.Any(p => p.Phase == DownloadPhase.Transferring) ? DownloadPhase.Retrying : r?.Phase ?? DownloadPhase.Transferring },
                 Eta = r?.Phase == DownloadPhase.Transferring && j.State == DownloadState.Downloading && j.Total.HasValue ? r.Meter.Eta(j.Total.Value - bytes) : null,
+                DiskSpace = disks.Snapshot(j.Id) ?? j.DiskSpace,
+                WaitingForBandwidth = bandwidth.IsWaiting(j.Id),
                 Retry = r?.Probe.Retry ?? 0,
                 RetryIn = RetryRemaining(r?.Probe),
                 ConnectionLimit = library.Settings.Connections,
@@ -226,6 +234,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
             {
                 lock (gate)
                 {
+                    RefreshDiskSpace();
                     foreach (var pair in running.Where(p => p.Value.Task.IsCompleted).ToArray())
                     { pair.Value.Cancel.Dispose(); running.Remove(pair.Key); }
                     if (!stopping && !library.GloballyPaused && PersistenceError == null)
@@ -249,8 +258,12 @@ public sealed partial class DownloadEngine : IAsyncDisposable
         var token = run.Cancel.Token;
         try
         {
+            // Only a scratch assembly is disposable; existing parts remain authoritative.
+            var scratch = Path.Combine(job.PartsDirectory, "assembled.tmp");
+            if (File.Exists(scratch)) File.Delete(scratch);
             if (job.Segments.Count > 0 && job.Segments.All(s => s.Complete))
             {
+                AdmitDisk(job, true);
                 await AssembleAsync(job, token);
                 lock (gate) { job.State = DownloadState.Completed; job.Diagnostic = null; Save(); }
                 try { Directory.Delete(job.PartsDirectory, true); } catch (IOException) { }
@@ -284,6 +297,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                 run.Phase = DownloadPhase.Transferring;
                 for (var i = 0; i < job.Segments.Count; i++) run.Segments[i] = new() { Bytes = job.Segments[i].Committed };
             }
+            AdmitDisk(job, false);
             await TransferQueueAsync(job, run, token);
             token.ThrowIfCancellationRequested();
             await AssembleAsync(job, token);
@@ -291,6 +305,8 @@ public sealed partial class DownloadEngine : IAsyncDisposable
             try { Directory.Delete(job.PartsDirectory, true); } catch (IOException) { /* Completed output is already durable. */ }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (ProblemException ex) when (ex.Problem.Code is ProblemCode.InsufficientDiskSpace or ProblemCode.DiskSpaceUnavailable)
+        { lock (gate) StopForDisk(job.Id, ex.Problem.Code); }
         catch (DecisionException ex) { lock (gate) { job.State = DownloadState.NeedsDecision; job.Diagnostic = ex.Problem; } }
         catch (Exception ex)
         {
@@ -306,7 +322,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                 };
             }
         }
-        finally { lock (gate) Save(); }
+        finally { lock (gate) { job.DiskSpace = disks.Snapshot(job.Id) ?? job.DiskSpace; disks.Remove(job.Id); Save(); } }
     }
     private string UniqueTarget(DownloadJob j)
     {
@@ -412,7 +428,7 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                         throw new DecisionException(new(ProblemCode.FileChanged));
                     if (job.ETag == null && job.LastModified.HasValue && response.Content.Headers.LastModified is { } modified && modified != job.LastModified)
                         throw new DecisionException(new(ProblemCode.ModifiedChanged));
-                    await using var output = new FileStream(partPath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.Read, 65536, FileOptions.Asynchronous);
+                    await using var output = files.OpenWrite(partPath, FileMode.OpenOrCreate);
                     output.SetLength(offset); output.Position = offset;
                     await using var input = await response.Content.ReadAsStreamAsync(token);
                     var buffer = new byte[65536];
@@ -423,35 +439,41 @@ public sealed partial class DownloadEngine : IAsyncDisposable
                         while (true)
                         {
                             int read;
+                            var allowance = await bandwidth.AcquireAsync(job.Id, buffer.Length, token);
+                            var consumed = 0;
+                            try
+                            {
                             using (var idle = CancellationTokenSource.CreateLinkedTokenSource(token))
                             {
                                 idle.CancelAfter(TimeSpan.FromSeconds(30));
-                                try { read = await input.ReadAsync(buffer, idle.Token); }
+                                try { read = await input.ReadAsync(buffer.AsMemory(0, allowance), idle.Token); consumed = read; }
                                 catch (IOException) { throw new RetryException(new(ProblemCode.Disconnected)); }
                             }
+                            }
+                            finally { bandwidth.Refund(allowance - consumed); }
                             if (read == 0) break;
                             if (segment.End.HasValue && written + read > segment.End.Value - segment.Start + 1)
                                 throw new DecisionException(new(ProblemCode.TooMuchData));
-                            await output.WriteAsync(buffer.AsMemory(0, read), token);
+                            await WriteWithDiskBudgetAsync(job, output, buffer.AsMemory(0, read), token);
                             written += read; Interlocked.Add(ref run.Bytes, read); run.Meter.Add(read);
                             lock (gate) progress.Bytes = written;
                             if ((DateTime.UtcNow - checkpoint).TotalSeconds >= 2)
                             {
-                                output.Flush(true);
+                                files.Flush(output);
                                 lock (gate) { segment.Committed = written; Save(); }
                                 checkpoint = DateTime.UtcNow;
                             }
                         }
                         if (segment.End.HasValue && written != segment.End.Value - segment.Start + 1)
                             throw new RetryException(new(ProblemCode.IncompleteResponse));
-                        output.Flush(true);
+                        files.Flush(output);
                         lock (gate) { segment.Committed = written; segment.Complete = true; Save(); }
                         return true;
                     }
                     finally
                     {
                         // FileStream.Length reflects completed writes, including cancellation boundaries.
-                        output.Flush(true);
+                        files.Flush(output);
                         lock (gate) { segment.Committed = output.Length; Save(); }
                     }
                 }
@@ -462,18 +484,27 @@ public sealed partial class DownloadEngine : IAsyncDisposable
     }
     private async Task AssembleAsync(DownloadJob job, CancellationToken token)
     {
-        lock (gate) if (running.TryGetValue(job.Id, out var active)) active.Phase = DownloadPhase.Assembling;
+        lock (gate)
+        {
+            disks.BeginAssembly(job.Id);
+            RefreshDiskSpace(true);
+            token.ThrowIfCancellationRequested();
+            if (running.TryGetValue(job.Id, out var active)) active.Phase = DownloadPhase.Assembling;
+        }
         var assembled = Path.Combine(job.PartsDirectory, "assembled.tmp");
-        await using (var output = new FileStream(assembled, FileMode.Create, FileAccess.Write, FileShare.None, 65536, FileOptions.Asynchronous))
+        await using (var output = files.OpenWrite(assembled, FileMode.Create))
         {
             foreach (var i in Enumerable.Range(0, job.Segments.Count).OrderBy(i => job.Segments[i].Start))
             {
                 await using var input = File.OpenRead(Part(job, i));
                 if (input.Length != job.Segments[i].Committed) throw new DecisionException(new(ProblemCode.SegmentSize));
-                await input.CopyToAsync(output, token);
+                var buffer = new byte[65536];
+                int count;
+                while ((count = await input.ReadAsync(buffer, token)) > 0)
+                    await WriteWithDiskBudgetAsync(job, output, buffer.AsMemory(0, count), token);
             }
             if (job.Total.HasValue && output.Length != job.Total) throw new DecisionException(new(ProblemCode.FinalSize));
-            output.Flush(true);
+            files.Flush(output);
             lock (gate) { job.Total ??= output.Length; Save(); }
         }
         string hash;
@@ -501,6 +532,6 @@ public sealed partial class DownloadEngine : IAsyncDisposable
         lifetime.Cancel(); await scheduler;
         lock (gate) { foreach (var j in library.Jobs.Where(j => j.State == DownloadState.Downloading)) j.State = DownloadState.Queued; Save(); }
         foreach (var r in running.Values) r.Cancel.Dispose();
-        client.Dispose(); lifetime.Dispose(); store.Dispose();
+        bandwidth.Dispose(); client.Dispose(); lifetime.Dispose(); store.Dispose();
     }
 }

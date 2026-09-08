@@ -1,0 +1,68 @@
+name: Deneb 2.1 packaged acceptance
+on:
+  push:
+    branches: [work/deneb-2.1]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            rid: osx-arm64
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: windows-latest
+            rid: win-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        env:
+          DOTNET_INSTALL_DIR: ${{ runner.temp }}/deneb-dotnet
+        with:
+          dotnet-version: '10.0.300'
+      - run: dotnet restore --locked-mode
+      - run: dotnet test --no-restore --logger trx
+      - run: dotnet publish src/Deneb.App -c Release -r ${{ matrix.rid }} --self-contained true -p:PublishSingleFile=true -p:RestoreLockedMode=true -o artifacts/${{ matrix.rid }}
+      - name: Package macOS and check extracted binary
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          bash scripts/package-release.sh
+          mkdir -p artifacts/verify
+          tar -xzf artifacts/release/deneb-osx-arm64.tar.gz -C artifacts/verify
+          python3 scripts/packaged-cli-smoke.py artifacts/verify/deneb
+          python3 scripts/tui-smoke.py artifacts/verify/deneb en
+          python3 scripts/tui-smoke.py artifacts/verify/deneb ru
+          python3 scripts/dialog-smoke.py artifacts/verify/deneb
+          python3 scripts/background-smoke.py artifacts/verify/deneb
+          python3 scripts/disk-smoke.py artifacts/verify/deneb
+      - name: Package experimental platforms
+        if: runner.os != 'macOS'
+        run: python scripts/package-experimental.py ${{ matrix.rid }}
+      - name: Verify Windows extracted binary
+        if: runner.os == 'Windows'
+        run: python scripts/packaged-cli-smoke.py artifacts/experimental/verify-win-x64/deneb.exe
+      - name: Verify Linux extracted binary and terminal
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          python3 scripts/packaged-cli-smoke.py artifacts/experimental/verify-linux-x64/deneb
+          python3 scripts/tui-smoke.py artifacts/experimental/verify-linux-x64/deneb en
+          python3 scripts/tui-smoke.py artifacts/experimental/verify-linux-x64/deneb ru
+      - run: git diff --exit-code -- '**/packages*.lock.json'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deneb-2.1.0-${{ matrix.rid }}
+          if-no-files-found: error
+          path: |
+            artifacts/release/*.tar.gz
+            artifacts/release/SHA256SUMS.txt
+            artifacts/experimental/*.tar.gz
+            artifacts/experimental/*.zip
+            artifacts/experimental/SHA256SUMS-*.txt

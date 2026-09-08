@@ -64,7 +64,7 @@ public sealed class ControlServer(LocalEndpoint endpoint)
                     using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
                     timeout.CancelAfter(TimeSpan.FromSeconds(30));
                     var request = await Framing.ReadAsync<Request>(stream, timeout.Token);
-                    if (request.Protocol != 1 || request.Version != "2.0.0")
+                    if (request.Protocol != 2 || request.Version != "2.1.0")
                     { await Framing.WriteAsync(stream, new Response(request.Id, new(ProblemCode.Incompatible)), timeout.Token); return; }
                     if (!greeted)
                     {

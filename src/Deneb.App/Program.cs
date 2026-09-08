@@ -20,7 +20,7 @@ if (args.Contains("--background"))
     return;
 }
 var localization = new Localization(StateStore.ReadLanguage(stateDirectory));
-if (args.Contains("--version")) { Console.WriteLine("Deneb 2.0.0"); return; }
+if (args.Contains("--version")) { Console.WriteLine("Deneb 2.1.0"); return; }
 if (stateIndex >= 0 && stateDirectory == null) { Console.Error.WriteLine(localization.Text("MissingStatePath")); Environment.ExitCode = 2; return; }
 if (args.Contains("--help")) { Console.WriteLine(localization.Text("CliHelp")); return; }
 try
@@ -157,6 +157,7 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
         if (rows.Count > 0) table.SetSelection(0, Math.Max(0, index), false);
         table.RowOffset = rowOffset; table.ColumnOffset = columnOffset;
         summary.Text = !engine.Connected ? T("DisconnectedBanner") : engine.PersistenceError != null ? localization.Error(engine.PersistenceError) : busy ? T("Busy") : T("Summary", engine.GloballyPaused ? T("GlobalBanner") : "", rows.Count, marked.Count, localization.Rate(rows.Sum(r => r.Speed)), notice == null ? "" : T("Batch", notice.Processed.Count, notice.Skipped.Count, notice.Failed.Count));
+        if (engine.Connected) summary.Text += " | " + localization.Bandwidth(engine.GetSettings().BandwidthLimitBytesPerSecond);
         table.SetNeedsDisplay();
     }
     private string Size(long n) => localization.Size(n);
@@ -239,6 +240,9 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
                 var s = engine.Snapshots().FirstOrDefault(s => s.Id == id); if (s == null) return;
                 var top = info.TopRow; var left = info.LeftColumn; var cursor = info.CursorPosition;
                 var detailText = T("ConnectionDetail", s.Connections, s.ConnectionLimit, s.ApplyingConnections ? T("ApplyingConnections") : T("Constraint_" + s.ConnectionConstraint), localization.Error(s.ConnectionError)) + "\n" + T("Details", localization.Name(s), localization.Phase(s.Phase), Size(s.Bytes), s.Total.HasValue ? Size(s.Total.Value) : T("Unknown"), localization.Rate(s.Speed), Duration(s.Eta), s.Connections, s.Source, s.Target, s.Retry, Duration(s.RetryIn), localization.Error(s.Error));
+                detailText += "\n" + localization.Disk(s.DiskSpace);
+                if (s.WaitingForBandwidth) detailText += "\n" + T("BandwidthWaiting");
+                if (s.Phase == DownloadPhase.DiskPause) detailText += "\n" + T("DiskResumeHint");
                 if (info.Text.ToString() != detailText) { info.Text = detailText; info.CursorPosition = cursor; info.TopRow = top; info.LeftColumn = left; }
                 restart.Enabled = s.State == DownloadState.NeedsDecision; open.Enabled = reveal.Enabled = copy.Enabled = s.State == DownloadState.Completed && OperatingSystem.IsMacOS();
                 var data = new DataTable(); foreach (var c in new[] { T("Number"), T("Range"), T("Volume"), "%", T("State"), T("Retry"), T("RetryIn") }) data.Columns.Add(c);
@@ -290,10 +294,13 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
         var connections = new TextField(settings.Connections.ToString(localization.Culture)) { X = 43, Y = 3, Width = 6 };
         var folder = new TextField(settings.Destination) { X = 1, Y = 6, Width = Dim.Fill(1) };
         var ok = new Button(T("Save")); var cancel = new Button(T("Cancel"));
-        var dialog = new Dialog(T("SettingsTitle"), 90, 16, ok, cancel);
+        var dialog = new Dialog(T("SettingsTitle"), 96, 21, ok, cancel);
+        var rate = new TextField((settings.BandwidthLimitBytesPerSecond / 1024m).ToString("0.##########", localization.Culture)) { X = 43, Y = 11, Width = 20 };
+        var rateUnit = new RadioGroup(new NStack.ustring[] { localization.Text("Rate", T("KiB")), localization.Text("Rate", T("MiB")) }) { X = 67, Y = 11 };
         var language = new RadioGroup(new NStack.ustring[] { T("English"), T("Russian") }) { X = 27, Y = 8, SelectedItem = settings.Language == "ru" ? 1 : 0 };
         dialog.Add(new Label(T("ActiveFilesLabel")) { X = 1, Y = 1 }, files, new Label(T("ConnectionsLabel")) { X = 1, Y = 3 }, connections, new Label(T("DestinationLabel")) { X = 1, Y = 5 }, folder);
         dialog.Add(new Label(T("LanguageLabel")) { X = 1, Y = 8 }, language);
+        dialog.Add(new Label(T("BandwidthLabel")) { X = 1, Y = 11 }, rate, rateUnit, new Label(T("BandwidthHint")) { X = 1, Y = 14 });
         files.SetFocus();
         cancel.Clicked += () => Application.RequestStop();
         ok.Clicked += () =>
@@ -301,7 +308,7 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
             try
             {
                 if (!int.TryParse(files.Text.ToString(), System.Globalization.NumberStyles.Integer, localization.Culture, out var f) || !int.TryParse(connections.Text.ToString(), System.Globalization.NumberStyles.Integer, localization.Culture, out var c)) throw new ProblemException(ProblemCode.IntegerSettings);
-                var updated = new Settings { ActiveFiles = f, Connections = c, Destination = folder.Text.ToString() ?? "", Language = language.SelectedItem == 1 ? "ru" : "en" };
+                var updated = new Settings { ActiveFiles = f, Connections = c, Destination = folder.Text.ToString() ?? "", Language = language.SelectedItem == 1 ? "ru" : "en", BandwidthLimitBytesPerSecond = localization.ParseBandwidth(rate.Text.ToString() ?? "", rateUnit.SelectedItem == 1) };
                 updated.Validate();
                 Work(async () => { await engine.SetSettingsAsync(updated); Application.MainLoop.Invoke(() => { localization.SetLanguage(engine.GetSettings().Language); Refresh(); }); });
                 Application.RequestStop();

@@ -68,7 +68,7 @@ public sealed class Version20Tests : IDisposable
         File.WriteAllText(Path.Combine(root, "state.json"), json);
         using var store = new StateStore(root);
         var loaded = store.Load(); store.Save(loaded);
-        Assert.Equal(4, loaded.Version); Assert.Equal("ru", loaded.Settings.Language);
+        Assert.Equal(5, loaded.Version); Assert.Equal("ru", loaded.Settings.Language);
         Assert.True(loaded.GloballyPaused); Assert.Equal("000.part", loaded.Jobs[0].Segments[0].FileName);
         Assert.Equal(json, File.ReadAllText(Path.Combine(root, "state.json.v3.bak")));
         Assert.Equal(new byte[] { 1, 2, 3 }, File.ReadAllBytes(Path.Combine(job.PartsDirectory, "000.part")));
@@ -96,10 +96,11 @@ public sealed class Version20Tests : IDisposable
             Assert.Equal(ProblemCode.InterfaceOpen, error.Problem.Code);
             await using var cli = await ControlClient.ConnectAsync(endpoint);
             await cli.SendAsync(new() { Command = Command.PauseAll });
-            var settings = cli.State.Settings; settings.Language = "ru"; settings.Connections = 10;
+            var settings = cli.State.Settings; settings.Language = "ru"; settings.Connections = 10; settings.BandwidthLimitBytesPerSecond = 234567;
             await cli.SendAsync(new() { Command = Command.Settings, Settings = settings });
             await first.SendAsync(new() { Command = Command.Snapshot });
             Assert.True(first.State.GloballyPaused); Assert.Equal(10, first.State.Settings.Connections);
+            Assert.Equal(234567, first.State.Settings.BandwidthLimitBytesPerSecond);
             await first.DisposeAsync(); await Task.Delay(100);
             await using var replacement = await ControlClient.ConnectAsync(endpoint, true);
             Assert.Equal("ru", replacement.State.Settings.Language);
@@ -116,7 +117,7 @@ public sealed class Version20Tests : IDisposable
         try
         {
             using var stream = await endpoint.ConnectAsync(default);
-            var request = new Request { Protocol = 99, Command = Command.Hello };
+            var request = new Request { Protocol = 1, Version = "2.0.0", Command = Command.Hello };
             await Framing.WriteAsync(stream, request, default);
             var response = await Framing.ReadAsync<Response>(stream, default);
             Assert.Equal(ProblemCode.Incompatible, response.Error!.Code);

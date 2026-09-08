@@ -27,9 +27,9 @@ public sealed class StateStore : IDisposable
             try
             {
                 var library = JsonSerializer.Deserialize<Library>(File.ReadAllText(candidate)) ?? throw new JsonException();
-                if (library.Version is not (1 or 2 or 3 or 4)) throw new ProblemException(ProblemCode.UnsupportedStore);
+                if (library.Version is not (1 or 2 or 3 or 4 or 5)) throw new ProblemException(ProblemCode.UnsupportedStore);
                 library.Settings.Validate();
-                if (library.Version < 4)
+                if (library.Version < 5)
                 {
                     var backup = path + $".v{library.Version}.bak";
                     if (!File.Exists(backup)) File.Copy(candidate, backup, false);
@@ -43,10 +43,12 @@ public sealed class StateStore : IDisposable
                             job.Error = null;
                         }
                     }
+                    if (library.Version < 4)
                     foreach (var job in library.Jobs)
                         for (var i = 0; i < job.Segments.Count; i++)
                         { job.Segments[i].Id = Guid.NewGuid(); job.Segments[i].FileName = $"{i:D3}.part"; }
-                    library.Version = 4;
+                    library.Settings.BandwidthLimitBytesPerSecond = 0;
+                    library.Version = 5;
                 }
                 foreach (var job in library.Jobs) ValidateSegments(job);
                 recoveredBackup = candidate.EndsWith(".bak", StringComparison.Ordinal);
@@ -66,7 +68,7 @@ public sealed class StateStore : IDisposable
             {
                 using var document = JsonDocument.Parse(File.ReadAllText(candidate));
                 var root = document.RootElement;
-                if (!root.TryGetProperty("Version", out var version) || version.GetInt32() is not (3 or 4)) return "en";
+                if (!root.TryGetProperty("Version", out var version) || version.GetInt32() is not (3 or 4 or 5)) return "en";
                 if (root.TryGetProperty("Settings", out var settings) && settings.TryGetProperty("Language", out var language))
                     return Settings.NormalizeLanguage(language.GetString());
                 return "en";

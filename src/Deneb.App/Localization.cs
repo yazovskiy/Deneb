@@ -27,5 +27,21 @@ public sealed class Localization
     public string Rate(double bytes) => Text("Rate", Size((long)bytes));
     public string Duration(TimeSpan? time) => time is { } t
         ? (t.Days > 0 ? Text("Days", t.Days) : "") + t.ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture) : Text("Dash");
+    public long ParseBandwidth(string text, bool mebibytes)
+    {
+        if (!decimal.TryParse(text, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign | NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite, Culture, out var amount) || amount < 0)
+            throw new ProblemException(ProblemCode.InvalidBandwidth);
+        try
+        {
+            var bytes = amount * (mebibytes ? 1048576m : 1024m);
+            if (bytes is > 0 and < 1 || bytes > long.MaxValue) throw new ProblemException(ProblemCode.InvalidBandwidth);
+            return checked((long)decimal.Round(bytes, 0, MidpointRounding.AwayFromZero));
+        }
+        catch (OverflowException) { throw new ProblemException(ProblemCode.InvalidBandwidth); }
+    }
+    public string Bandwidth(long bytes) => bytes == 0 ? Text("BandwidthUnlimited") : Text("BandwidthSummary", Rate(bytes));
+    public string Disk(DiskSpaceSnapshot? space) => space == null ? "" :
+        Text("DiskDetails", Size(space.AvailableBytes), Size(space.RequiredBytes), Size(space.ReservedByOthersBytes), Size(space.SafetyBytes)) +
+        (space.UnknownSize ? "\n" + Text("DiskUnknown") : "");
     public string Name(Snapshot snapshot) => string.IsNullOrWhiteSpace(snapshot.Name) ? Text("GettingName") : snapshot.Name;
 }

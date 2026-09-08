@@ -30,7 +30,7 @@ with tempfile.TemporaryDirectory(prefix="deneb-packaged-cli-") as temp:
         return text
 
     try:
-        assert "2.0.0" in run("--version")
+        assert "2.1.0" in run("--version")
         for language in ("en", "ru"):
             state.write_text(json.dumps({"Version": 4, "Settings": {"Language": language}, "Jobs": []}), encoding="utf-8")
             before = state.read_bytes()
