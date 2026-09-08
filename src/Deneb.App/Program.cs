@@ -183,9 +183,17 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
         var dialog = new Dialog(T("SearchTitle"), 64, 15, apply, cancel);
         dialog.Add(text, choices);
         text.SetFocus();
-        apply.Clicked += () => { search = text.Text.ToString() ?? ""; filter = QueueView.Filters[choices.SelectedItem]; notice = null; Application.RequestStop(); };
+        void Apply() { search = text.Text.ToString() ?? ""; filter = QueueView.Filters[choices.SelectedItem]; notice = null; Application.RequestStop(); }
+        apply.Clicked += Apply;
         cancel.Clicked += () => Application.RequestStop();
-        Application.Run(dialog);
+        var previous = Application.RootKeyEvent;
+        Application.RootKeyEvent = key =>
+        {
+            if (key.Key == Key.Enter && !cancel.HasFocus) { Apply(); return true; }
+            return previous?.Invoke(key) ?? false;
+        };
+        try { Application.Run(dialog); }
+        finally { Application.RootKeyEvent = previous; }
     });
     private void Dialog(Action action) { modal = true; try { action(); } catch (Exception ex) { Error(ex); } finally { modal = false; Refresh(); } }
     private void Error(Exception ex) => MessageBox.ErrorQuery(T("ErrorTitle"), localization.Error(ex), T("Ok"));
