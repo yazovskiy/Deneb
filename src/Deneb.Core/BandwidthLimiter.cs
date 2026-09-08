@@ -18,8 +18,8 @@ public sealed class BandwidthLimiter : IDisposable
     {
         this.clock = clock;
         timestamp = clock.GetTimestamp();
+        timer = clock.CreateTimer(_ => { lock (gate) Pump(); }, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
         SetLimit(bytesPerSecond);
-        timer = clock.CreateTimer(_ => { lock (gate) Pump(); }, null, TimeSpan.FromMilliseconds(10), TimeSpan.FromMilliseconds(10));
     }
     public void SetLimit(long bytesPerSecond)
     {
@@ -38,6 +38,11 @@ public sealed class BandwidthLimiter : IDisposable
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maximum);
         token.ThrowIfCancellationRequested();
+        lock (gate)
+        {
+            ObjectDisposedException.ThrowIf(disposed, this);
+            if (limit == 0) return maximum;
+        }
         TaskCompletionSource<int> completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
         using var registration = token.Register(() => completion.TrySetCanceled(token));
         lock (gate)
@@ -77,6 +82,8 @@ public sealed class BandwidthLimiter : IDisposable
             if (waiter.Completion.TrySetResult(count) && limit != 0) tokens -= count;
             if (queue.Count == 0) waiting.Remove(job); else order.Enqueue(job);
         }
+        var interval = order.Count == 0 ? Timeout.InfiniteTimeSpan : TimeSpan.FromMilliseconds(10);
+        timer.Change(interval, interval);
     }
     public void Dispose()
     {
