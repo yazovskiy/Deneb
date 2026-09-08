@@ -19,10 +19,10 @@ IDs are full UUIDs (hyphenated or 32 hexadecimal characters), or unique hexadeci
 `--json` outputs exactly one JSON object on stdout and no localized text on stderr:
 
 ```json
-{"schemaVersion":1,"result":{"backgroundRunning":false,"globallyPaused":false,"totalCount":0,"jobs":[],"added":[],"processed":[],"skipped":[],"failed":[],"failedInput":null,"notSentInputs":[],"outcomeUnknown":false},"error":null}
+{"schemaVersion":1,"result":{"backgroundRunning":false,"globallyPaused":false,"totalCount":0,"activeCount":0,"jobs":[],"added":[],"processed":[],"skipped":[],"failed":[],"failedInput":null,"notSentInputs":[],"outcomeUnknown":false},"error":null}
 ```
 
-This is a separate public DTO, not serialized IPC or storage data. `jobs` is populated by list/show. `totalCount` describes the last queue snapshot, not just filtered jobs. IDs are full UUID strings. `added` contains acknowledged IDs; `failedInput` and `notSentInputs` are 1-based input positions. On disconnect, `outcomeUnknown: true` means the failed input/command may actually have executed: inspect the queue before retrying.
+This is a separate public DTO, not serialized IPC or storage data. `jobs` is populated by list/show. `activeCount` counts all downloading jobs; `totalCount` describes the last queue snapshot, not just filtered jobs. IDs are full UUID strings. `added` contains acknowledged IDs; `failedInput` and `notSentInputs` are 1-based input positions. On disconnect, `outcomeUnknown: true` means the failed input/command may actually have executed: inspect the queue before retrying.
 
 Each job contains `id`, `name`, `state`, `phase`, `bytes`, nullable `totalBytes`, `bytesPerSecond`, nullable `etaSeconds`, `connections`, `connectionLimit`, host-only `source`, nullable `target`, nullable `error`, and `segments`. States are `Queued`, `Downloading`, `Paused`, `Completed`, `NeedsDecision`, `Failed`. Phases are stable enum names (`Queued`, `GlobalPause`, `ManualPause`, `Completed`, `Failed`, `NeedsDecision`, `Probing`, `ProbeRetry`, `Transferring`, `Retrying`, `Ready`, `Stopped`, `Waiting`, `Assembling`, `Verifying`, `DiskPause`). Unknown totals/times are null, never localized strings.
 

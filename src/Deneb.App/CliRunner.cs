@@ -19,6 +19,7 @@ public sealed class CliResult
     public bool BackgroundRunning { get; set; }
     public bool GloballyPaused { get; set; }
     public int TotalCount { get; set; }
+    public int ActiveCount { get; set; }
     public CliJob[] Jobs { get; set; } = [];
     public List<Guid> Added { get; } = [];
     public Guid[] Processed { get; set; } = [];
@@ -57,6 +58,7 @@ public static class CliRunner
                     result.BackgroundRunning = true;
                     result.GloballyPaused = client.State.GloballyPaused;
                     result.TotalCount = client.State.Jobs.Length;
+                    result.ActiveCount = client.State.Jobs.Count(j => j.State == DownloadState.Downloading);
                     if (options.Command == "add")
                     {
                         for (var i = 0; i < additions.Count; i++)
@@ -103,6 +105,7 @@ public static class CliRunner
                     }
                     else if (options.Command == "list") result.Jobs = QueueView.Apply(client.State.Jobs, options.Search, options.Filter).Select(CliJob.From).ToArray();
                     result.TotalCount = client.State.Jobs.Length; result.GloballyPaused = client.State.GloballyPaused;
+                    result.ActiveCount = result.BackgroundRunning ? client.State.Jobs.Count(j => j.State == DownloadState.Downloading) : 0;
                 }
             }
         }
@@ -119,7 +122,7 @@ public static class CliRunner
         else
         {
             await output.WriteLineAsync(language.Text(result.BackgroundRunning ? "CliRunning" : "BackgroundStopped"));
-            if (result.BackgroundRunning) await output.WriteLineAsync(language.Text("CliQueue", result.TotalCount, result.GloballyPaused ? language.Text("GlobalBanner") : ""));
+            if (result.BackgroundRunning) await output.WriteLineAsync(language.Text("BackgroundStatus", result.TotalCount, result.ActiveCount, result.GloballyPaused ? language.Text("GlobalBanner") : ""));
             foreach (var id in result.Added) await output.WriteLineAsync(language.Text("CliAdded", id));
             foreach (var job in result.Jobs)
             {
