@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/yazovskiy/Deneb/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/yazovskiy/Deneb?color=8b9cff&style=flat-square"></a>
   <img alt="macOS Apple Silicon" src="https://img.shields.io/badge/macOS-Apple%20Silicon-111827?style=flat-square&logo=apple">
-  <a href="https://github.com/yazovskiy/Deneb/releases/tag/v2.0.0-experimental.1"><img alt="Windows / Linux experimental" src="https://img.shields.io/badge/Windows%20%2F%20Linux-experimental-fbbf24?style=flat-square"></a>
+  <a href="https://github.com/yazovskiy/Deneb/releases/tag/v2.1.0-experimental.1"><img alt="Windows / Linux experimental" src="https://img.shields.io/badge/Windows%20%2F%20Linux-experimental-fbbf24?style=flat-square"></a>
   <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-7dd3fc?style=flat-square"></a>
 </p>
@@ -21,7 +21,7 @@
   &nbsp; · &nbsp; <a href="CHANGELOG.md">Что нового</a>
 </p>
 
-## Deneb 2.1: место и общий лимит скорости (подготовка релиза)
+## Deneb 2.1: место и общий лимит скорости
 
 В **F2 → Общий лимит скорости** задайте число в КиБ/с или МиБ/с. Дробные числа вводятся по выбранному языку; `0` — без ограничения. Лимит общий для всех задач, применяется после сохранения без перезапуска передач и отображается внизу. Ограничиваются читаемые байты тела HTTP-ответа, не заголовки, TLS или буферы ОС. Сборка и вычисление хеша не замедляются.
 
@@ -31,7 +31,7 @@
 
 Перед обновлением остановите старый фон. Хранилище v5 сохраняет очереди v1–v4 с отдельной резервной копией; имена и ID частей v4 не меняются, лимит по умолчанию отсутствует. IPC v2 не подключается к старому фону. Не открывайте очередь v5 в 2.0 и более ранних версиях.
 
-Ссылки ниже ведут на опубликованные сборки 2.0 до приёмки и публикации 2.1.
+Ниже доступны сборки Deneb 2.1.0: стабильная для macOS и экспериментальные для Windows и Linux.
 
 ## Фон и соединения
 
@@ -55,10 +55,10 @@
 | Платформа | Статус | Автономная сборка |
 |---|---|---|
 | macOS Apple Silicon (ARM64) | **Стабильная** | [tar.gz](https://github.com/yazovskiy/Deneb/releases/latest/download/deneb-osx-arm64.tar.gz) |
-| Windows x64 | **Экспериментальная — pre-release** | [zip](https://github.com/yazovskiy/Deneb/releases/download/v2.0.0-experimental.1/deneb-win-x64-experimental.zip) |
-| Linux x64 (glibc) | **Экспериментальная — pre-release** | [tar.gz](https://github.com/yazovskiy/Deneb/releases/download/v2.0.0-experimental.1/deneb-linux-x64-experimental.tar.gz) |
+| Windows x64 | **Экспериментальная — pre-release** | [zip](https://github.com/yazovskiy/Deneb/releases/download/v2.1.0-experimental.1/deneb-win-x64-experimental.zip) |
+| Linux x64 (glibc) | **Экспериментальная — pre-release** | [tar.gz](https://github.com/yazovskiy/Deneb/releases/download/v2.1.0-experimental.1/deneb-linux-x64-experimental.tar.gz) |
 
-Windows/Linux доступны в [отдельном предварительном релизе](https://github.com/yazovskiy/Deneb/releases/tag/v2.0.0-experimental.1); стабильный macOS-релиз остаётся Latest. Автотесты не заменяют полную приёмку терминального интерфейса. **Открытие файла, показ в файловом менеджере и копирование пути пока работают только на macOS.** Сборок Windows/Linux ARM64, Intel Mac и Alpine/musl нет.
+Windows/Linux доступны в [отдельном предварительном релизе](https://github.com/yazovskiy/Deneb/releases/tag/v2.1.0-experimental.1); стабильный macOS-релиз остаётся Latest. Автотесты не заменяют полную приёмку терминального интерфейса. **Открытие файла, показ в файловом менеджере и копирование пути пока работают только на macOS.** Сборок Windows/Linux ARM64, Intel Mac и Alpine/musl нет.
 
 Сначала распакуйте архив: Linux — `./deneb`, Windows PowerShell — `.\deneb.exe` (рекомендуется Windows Terminal). Установка .NET не нужна; для Linux нужны системные зависимости runtime. В экспериментальные архивы включён `EXPERIMENTAL.md` с ограничениями, а к релизу приложены SHA-256. Для пробы используйте отдельный `--state-dir`. Бинарники не подписаны; не отключайте защиту системы целиком.
 
