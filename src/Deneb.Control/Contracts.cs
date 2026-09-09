@@ -4,11 +4,11 @@ using Deneb.Core;
 
 namespace Deneb.Control;
 
-public enum Command { Hello, Snapshot, Add, Settings, Url, Replace, Restart, Pause, Resume, Remove, Move, Next, PauseAll, ResumeAll, Clear, Stop }
+public enum Command { Hello, Snapshot, Add, Settings, Url, Replace, Restart, Pause, Resume, Remove, Move, Next, PauseAll, ResumeAll, Clear, Stop, Trash }
 public sealed record Request
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public int Protocol { get; init; } = 3;
+    public int Protocol { get; init; } = 4;
     public string Version { get; init; } = "2.2.0";
     public Command Command { get; init; }
     public bool Interactive { get; init; }

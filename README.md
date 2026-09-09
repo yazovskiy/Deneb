@@ -38,7 +38,11 @@ deneb remove TASK_ID
 
 In the UI, **/** opens filename search and a state filter; **Ctrl+L** resets both. Hidden marks survive, but bulk actions target only visible marks (or the current visible row). F3/F4 move in the full queue; F9 clears all completed entries including hidden ones. Search is session-only. See the [CLI / JSON reference](docs/cli.md).
 
-**Upgrade:** stop the old background process with the old binary (`deneb stop`). Version 2.2 uses IPC v3 and unchanged storage v5. Published download links below still point to 2.1 until 2.2 acceptance and publication.
+**Upgrade:** stop the old background process with the old binary (`deneb stop`). Version 2.2 uses IPC v4 and unchanged storage v5. Published download links below still point to 2.1 until 2.2 acceptance and publication.
+
+The earlier 2.2 preview used IPC v3 and must also be stopped before upgrading. `deneb help COMMAND` (or `COMMAND -h`) and F1 → CLI commands share detailed help. The filename column uses half the table width, with a two-line selected-name preview underneath.
+
+Delete offers **Remove from list** (preserve everything), **Delete unfinished data** (skip completed files), or **Move to Trash and remove from list** (completed files only, macOS). Data actions require additional confirmation. CLI Trash: `deneb remove ID --trash --yes`. Windows/Linux explain that Trash is unavailable; there is no permanent-delete fallback. F9 always preserves files.
 
 ## Disk safety and shared speed limit
 
@@ -48,7 +52,7 @@ Before downloading a known-size file, Deneb budgets the remaining parts **plus t
 
 If space runs low, the task pauses and keeps confirmed parts. Free space, then press **Space** on that task to resume. Removing global pause or restarting Deneb does not resume disk-paused tasks. Details show the last space check; inability to inspect the volume is reported separately.
 
-Stop the old background process before upgrading. Storage v5 preserves v1–v4 queues and parts with separate backups, defaults the speed cap to unlimited and keeps v4 part names/IDs unchanged. IPC v3 rejects the older background process. Do not open a v5 store in 2.0 or earlier.
+Stop the old background process before upgrading. Storage v5 preserves v1–v4 queues and parts with separate backups, defaults the speed cap to unlimited and keeps v4 part names/IDs unchanged. IPC v4 rejects the older background process. Do not open a v5 store in 2.0 or earlier.
 
 Download Deneb 2.1.0 below: stable on macOS, experimental on Windows and Linux.
 

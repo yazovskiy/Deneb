@@ -8,9 +8,17 @@ All commands accept `--state-dir PATH`. Paths resolve against the CLI working di
 - `list [--search TEXT] [--filter all|active|queued|paused|completed|attention]`: filename substring, ordinal case-insensitive, combined with state filter; queue order is preserved. Attention includes Failed, NeedsDecision and disk-space/measurement pauses. An absent daemon returns an empty result with `backgroundRunning: false`, not an offline view of saved jobs.
 - `show ID`: task details and segments.
 - `pause [ID...]`, `resume [ID...]`: no IDs means global pause/resume; IDs mean individual tasks. Resume skips completed/decision-required tasks and retries failed ones without changing global pause.
-- `remove ID...`: preserves files and parts. Both `--delete-partial --yes` are required to delete unfinished parts; either flag alone is invalid. Final files are never deleted.
+- `remove ID...`: removes entries from the list, preserving files and parts. `--delete-partial --yes` deletes unfinished parts and their entries, skipping completed downloads. `--trash --yes` moves completed regular files to macOS system Trash and removes their entries, skipping unfinished downloads. These modes are mutually exclusive; either requires `--yes`. Trash is unavailable on Windows/Linux, and never falls back to permanent deletion.
 - `start`, `status`, `stop`: existing lifecycle. Missing daemon is success for status/stop. Other task operations fail when it is absent.
-- `--help`, `COMMAND --help`, `--version`: no background launch or state modification. Help uses saved EN/RU; `--json` is not supported for help/version.
+- `help`, `help COMMAND`, `COMMAND --help`, `COMMAND -h`, `--help`, `-h`, `--version`: no background launch, store lock or state modification. Command help includes syntax, examples, options, absent-background behavior and exit codes. F1 → CLI commands displays the same localized content. Help uses saved EN/RU; `--json` is not supported for help/version.
+
+Trash rechecks the completed entry and its saved target; missing files, directories and symbolic links are rejected without removing the entry. Failures retain the entry. If saving the queue fails after a successful move, the file remains in Trash and the entry may remain in the list: check it, then remove the entry normally. No automatic rollback or repeat occurs. F9 always preserves files.
+
+```sh
+deneb help remove
+deneb remove TASK_ID --trash --yes   # macOS only, recoverable through system Trash
+deneb remove TASK_ID                # remove from list only
+```
 
 IDs are full UUIDs (hyphenated or 32 hexadecimal characters), or unique hexadecimal prefixes of 8–32 characters. All IDs resolve against one snapshot before mutation; ambiguity or unknown IDs abort submission. Repeated IDs are deduplicated. A task removed by another client after resolution can appear in `failed`.
 
@@ -34,4 +42,6 @@ Use `deneb add --stdin < links.txt` for private links instead of placing tokens 
 
 ## Совместимость
 
-Версия приложения 2.2.0, IPC v3, очередь v5 без миграции. Остановите старый фон старым бинарником. Фильтры/поиск хранятся только в UI-сессии; JSON не зависит от языка. При частичном добавлении ранее добавленные задачи сохраняются; при неизвестном результате сначала проверьте очередь. Публикация сборок — после отдельной приёмки.
+The additive `result.failures` array contains per-ID diagnostics: `{ "id": "UUID", "error": { "code": "Persistence", "httpStatus": null }, "fileMoved": true }`. `fileMoved` indicates that Trash succeeded but the subsequent queue operation failed; do not repeat the move. Missing files use `MissingFile`, unsafe file types `UnsafeFileType`, unsupported platforms `UnsupportedPlatform`, and system Trash errors `TrashFailed`.
+
+Версия приложения 2.2.0, IPC v4, очередь v5 без миграции. Остановите старый фон старым бинарником. Фильтры/поиск хранятся только в UI-сессии; JSON не зависит от языка. При частичном добавлении ранее добавленные задачи сохраняются; при неизвестном результате сначала проверьте очередь. Публикация сборок — после отдельной приёмки.

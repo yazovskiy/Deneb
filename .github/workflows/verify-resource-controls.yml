@@ -40,6 +40,7 @@ jobs:
           python3 scripts/tui-smoke.py artifacts/verify/deneb en
           python3 scripts/tui-smoke.py artifacts/verify/deneb ru
           python3 scripts/dialog-smoke.py artifacts/verify/deneb
+          python3 scripts/polish-smoke.py artifacts/verify/deneb
           python3 scripts/background-smoke.py artifacts/verify/deneb
           python3 scripts/disk-smoke.py artifacts/verify/deneb
       - name: Package experimental platforms
@@ -55,6 +56,7 @@ jobs:
           python3 scripts/packaged-cli-smoke.py artifacts/experimental/verify-linux-x64/deneb
           python3 scripts/tui-smoke.py artifacts/experimental/verify-linux-x64/deneb en
           python3 scripts/tui-smoke.py artifacts/experimental/verify-linux-x64/deneb ru
+          python3 scripts/polish-smoke.py artifacts/experimental/verify-linux-x64/deneb
       - run: git diff --exit-code -- '**/packages*.lock.json'
       - uses: actions/upload-artifact@v4
         with:

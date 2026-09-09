@@ -46,9 +46,13 @@ with tempfile.TemporaryDirectory(prefix="deneb-packaged-cli-") as temp:
             help_text = run("--help")
             assert ("Использование:" if language == "ru" else "Usage:") in help_text
             assert before == state.read_bytes(), "Help modified the store"
-            for name in ("add", "list", "show", "pause", "resume", "remove"):
-                assert ("Использование:" if language == "ru" else "Usage:") in run(name, "--help")
-                assert before == state.read_bytes()
+            for args in [("help",), ("-h",)] + [(name, flag) for name in ("add", "list", "show", "pause", "resume", "remove", "start", "status", "stop") for flag in ("--help", "-h")] + [("help", name) for name in ("add", "list", "show", "pause", "resume", "remove", "start", "status", "stop")]:
+                assert ("Использование:" if language == "ru" else "Usage:") in run(*args)
+                assert before == state.read_bytes(), "Help changed state"
+            run("help", "unknown", expected=2)
+            run("remove", "12345678", "--trash", expected=2)
+            run("remove", "12345678", "--trash", "--delete-partial", "--yes", expected=2)
+            assert before == state.read_bytes()
         assert not command("list")["result"]["backgroundRunning"]
         command("add", "invalid", expected=2)
         assert not command("list")["result"]["backgroundRunning"]

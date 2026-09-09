@@ -73,4 +73,8 @@ public sealed record Snapshot(Guid Id, string Name, DownloadState State, long By
 }
 public enum ConnectionConstraint { None, Server, FileSize, Remainder, Retry }
 public sealed record SegmentSnapshot(int Number, long Start, long? End, long Bytes, bool Complete, DownloadPhase Phase, int Retry, TimeSpan? RetryIn);
-public sealed record BatchResult(IReadOnlyList<Guid> Processed, IReadOnlyList<Guid> Skipped, IReadOnlyList<Guid> Failed);
+public sealed record BatchFailure(Guid Id, Problem Error, bool FileMoved = false);
+public sealed record BatchResult(IReadOnlyList<Guid> Processed, IReadOnlyList<Guid> Skipped, IReadOnlyList<Guid> Failed)
+{
+    public IReadOnlyList<BatchFailure> Errors { get; init; } = [];
+}

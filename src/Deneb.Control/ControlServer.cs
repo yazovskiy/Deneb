@@ -4,7 +4,7 @@ using Deneb.Core;
 
 namespace Deneb.Control;
 
-public sealed class ControlServer(LocalEndpoint endpoint)
+public sealed class ControlServer(LocalEndpoint endpoint, ITrashService? trashService = null)
 {
     private readonly SemaphoreSlim mutations = new(1);
     private readonly CancellationTokenSource shutdown = new();
@@ -64,7 +64,7 @@ public sealed class ControlServer(LocalEndpoint endpoint)
                     using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
                     timeout.CancelAfter(TimeSpan.FromSeconds(30));
                     var request = await Framing.ReadAsync<Request>(stream, timeout.Token);
-                    if (request.Protocol != 3 || request.Version != "2.2.0")
+                    if (request.Protocol != 4 || request.Version != "2.2.0")
                     { await Framing.WriteAsync(stream, new Response(request.Id, new(ProblemCode.Incompatible)), timeout.Token); return; }
                     if (!greeted)
                     {
@@ -115,6 +115,7 @@ public sealed class ControlServer(LocalEndpoint endpoint)
             case Command.Pause: batch = await e.PauseManyAsync(r.Ids); break;
             case Command.Resume: batch = e.ResumeMany(r.Ids); break;
             case Command.Remove: batch = await e.RemoveManyAsync(r.Ids, r.DeletePartial); break;
+            case Command.Trash: batch = TrashOperations.Execute(e, r.Ids, trashService ?? new MacTrashService()); break;
             case Command.Move: if (r.Direction is not (-1 or 1)) throw new ProblemException(ProblemCode.Protocol); e.Move(r.Job, r.Direction); break;
             case Command.Next: e.DownloadNext(r.Job); break;
             case Command.PauseAll: await e.PauseAllAsync(); break;

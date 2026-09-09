@@ -31,7 +31,7 @@ if (background)
 }
 var localization = new Localization(StateStore.ReadLanguage(stateDirectory));
 if (options.Version) { Console.WriteLine("Deneb 2.2.0"); return; }
-if (options.Help) { Console.WriteLine(localization.Text("CliHelp")); return; }
+if (options.Help) { Console.WriteLine(CliHelp.Format(localization, options.HelpTopic)); return; }
 try
 {
     var endpoint = new LocalEndpoint(stateDirectory);
@@ -56,7 +56,8 @@ catch (Exception ex)
 
 sealed class DenebUi(RemoteEngine engine, Localization localization)
 {
-    private readonly TableView table = new() { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(2), FullRowSelect = true };
+    private readonly TableView table = new() { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(4), FullRowSelect = true };
+    private readonly TextView fullName = new() { X = 0, Y = Pos.AnchorEnd(4), Width = Dim.Fill(), Height = 2, ReadOnly = true, WordWrap = false, CanFocus = false };
     private readonly Label summary = new() { X = 0, Y = Pos.AnchorEnd(2), Width = Dim.Fill(), Height = 1 };
     private readonly Label keys = new()
     { X = 0, Y = Pos.AnchorEnd(1), Width = Dim.Fill(), Height = 1 };
@@ -72,12 +73,17 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
     private Window? window;
     private string T(string key, params object?[] values) => localization.Text(key, values);
     private Guid[] Targets => QueueView.Targets(rows, marked, Selected);
-    private void Report(BatchResult result) => notice = result;
+    private void Report(BatchResult result)
+    {
+        notice = result;
+        if (result.Errors.Count > 0) Application.MainLoop.Invoke(() => Dialog(() => MessageBox.ErrorQuery(T("ErrorTitle"),
+            string.Join("\n", result.Errors.Select(f => $"{f.Id}: {localization.Error(f.Error)}{(f.FileMoved ? " " + T("TrashMovedButRetained") : "")}")), T("Ok"))));
+    }
 
     public void Run()
     {
         window = new Window(T("WindowTitle")) { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill() };
-        window.Add(table, summary, keys);
+        window.Add(table, fullName, summary, keys);
         table.Style.ExpandLastColumn = false;
         Application.Top.Add(window);
         table.CellActivated += _ => Details();
@@ -107,7 +113,7 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
                 case Key.F10: Dialog(() => { if (MessageBox.Query(T("StopTitle"), T("StopPrompt"), T("Cancel"), T("Stop")) == 1) Work(async () => { await engine.StopAsync(); Application.MainLoop.Invoke(() => Application.RequestStop()); }); }); break;
                 case Key.F11: if (!engine.Connected) Work(() => engine.ReconnectAsync(false)); break;
                 case Key.F12: if (!engine.Connected) Work(() => engine.ReconnectAsync(true)); break;
-                case Key.F1: Dialog(() => MessageBox.Query(T("HelpTitle"), T("Help"), T("Close"))); break;
+                case Key.F1: Help(); break;
                 case Key.q: case Key.Q: case Key.CtrlMask | Key.c: Application.RequestStop(); break;
                 default: return;
             }
@@ -144,6 +150,7 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
         if (modal) return;
         var selected = Selected;
         var previousIndex = table.SelectedRow;
+        var selectedColumn = table.SelectedColumn;
         var rowOffset = table.RowOffset; var columnOffset = table.ColumnOffset;
         keys.Text = T("Keys"); if (window != null) window.Title = T("WindowTitle");
         var all = engine.Snapshots();
@@ -155,14 +162,16 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
         {
             var percent = s.Total is > 0 ? localization.Number(100.0 * s.Bytes / s.Total.Value) : s.State == DownloadState.Completed ? "100" : "—";
             var eta = Duration(s.Eta);
-            data.Rows.Add((marked.Contains(s.Id) ? "✓ " : "") + localization.Name(s), localization.Phase(s.Phase), percent, $"{Size(s.Bytes)} / {(s.Total.HasValue ? Size(s.Total.Value) : "?")}", localization.Rate(s.Speed), eta, T("ConnectionCount", s.Connections, s.ConnectionLimit));
+            data.Rows.Add((marked.Contains(s.Id) ? "✓ " : "") + QueueView.SafeText(localization.Name(s)), localization.Phase(s.Phase), percent, $"{Size(s.Bytes)} / {(s.Total.HasValue ? Size(s.Total.Value) : "?")}", localization.Rate(s.Speed), eta, T("ConnectionCount", s.Connections, s.ConnectionLimit));
         }
         table.Table = data;
         table.Style.ColumnStyles.Clear();
-        table.Style.ColumnStyles[data.Columns[0]] = new TableView.ColumnStyle { MinWidth = 24, MaxWidth = 38 };
+        var nameWidth = QueueLayout.NameWidth(table.Bounds.Width);
+        table.Style.ColumnStyles[data.Columns[0]] = new TableView.ColumnStyle { MinWidth = nameWidth, MaxWidth = nameWidth };
         var index = selected.HasValue ? rows.ToList().FindIndex(r => r.Id == selected) : 0;
-        if (rows.Count > 0) table.SetSelection(0, index >= 0 ? index : Math.Clamp(previousIndex, 0, rows.Count - 1), false);
+        if (rows.Count > 0) table.SetSelection(Math.Clamp(selectedColumn, 0, data.Columns.Count - 1), index >= 0 ? index : Math.Clamp(previousIndex, 0, rows.Count - 1), false);
         table.RowOffset = Math.Clamp(rowOffset, 0, Math.Max(0, rows.Count - 1)); table.ColumnOffset = columnOffset;
+        fullName.Text = Selected is { } current ? QueueLayout.Preview(localization.Name(rows.First(j => j.Id == current)), Math.Max(1, fullName.Bounds.Width)) : "";
         summary.Text = !engine.Connected ? T("DisconnectedBanner") : engine.PersistenceError != null ? localization.Error(engine.PersistenceError) : busy ? T("Busy") : T("Summary", engine.GloballyPaused ? T("GlobalBanner") : "", rows.Count, marked.Count, localization.Rate(rows.Sum(r => r.Speed)), notice == null ? "" : T("Batch", notice.Processed.Count, notice.Skipped.Count, notice.Failed.Count));
         if (engine.Connected)
         {
@@ -170,11 +179,26 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
             summary.Text = T("QueueSummary", rows.Count, all.Count, visibleMarks, marked.Count - visibleMarks, T("Filter_" + filter), localization.Rate(all.Sum(r => r.Speed))) + " | " + localization.Bandwidth(engine.GetSettings().BandwidthLimitBytesPerSecond) + (engine.GloballyPaused ? " " + T("GlobalBanner") : "");
             if (engine.PersistenceError != null) summary.Text = localization.Error(engine.PersistenceError);
             else if (busy) summary.Text = T("Busy");
-            else if (notice != null) summary.Text += " " + T("Batch", notice.Processed.Count, notice.Skipped.Count, notice.Failed.Count);
+            else if (notice != null) summary.Text = T("Batch", notice.Processed.Count, notice.Skipped.Count, notice.Failed.Count) + " | " + summary.Text;
         }
         table.SetNeedsDisplay();
     }
     private string Size(long n) => localization.Size(n);
+    private void Help() => Dialog(() =>
+    {
+        var close = new Button(T("Close"));
+        var dialog = new Dialog(T("HelpTitle"), Math.Min(112, Application.Top.Bounds.Width - 2), Math.Min(30, Application.Top.Bounds.Height - 2), close);
+        var tabs = new TabView { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(2) };
+        var keyboard = new TextView { Width = Dim.Fill(), Height = Dim.Fill(), ReadOnly = true, WordWrap = true, AllowsTab = false, Text = T("Help") };
+        var cli = new View { Width = Dim.Fill(), Height = Dim.Fill() };
+        var commands = new ListView(new[] { T("HelpOverview") }.Concat(CliHelp.Commands).ToList()) { X = 0, Y = 0, Width = 16, Height = Dim.Fill() };
+        var content = new TextView { X = 17, Y = 0, Width = Dim.Fill(), Height = Dim.Fill(), ReadOnly = true, WordWrap = true, AllowsTab = false, Text = CliHelp.Format(localization) };
+        commands.SelectedItemChanged += e => { content.Text = CliHelp.Format(localization, e.Item <= 0 || e.Item > CliHelp.Commands.Length ? null : CliHelp.Commands[e.Item - 1]); content.TopRow = 0; };
+        cli.Add(commands, content);
+        tabs.AddTab(new TabView.Tab(T("HelpKeyboard"), keyboard), true);
+        tabs.AddTab(new TabView.Tab(T("HelpCli"), cli), false);
+        dialog.Add(tabs); close.Clicked += () => Application.RequestStop(); tabs.SetFocus(); Application.Run(dialog);
+    });
     private void Search() => Dialog(() =>
     {
         var text = new TextField(search) { X = 1, Y = 1, Width = Dim.Fill(1) };
@@ -257,9 +281,15 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
         {
             var close = new Button(T("Close")); var restart = new Button(T("Restart"));
             var open = new Button(T("OpenFile")); var reveal = new Button(T("Reveal")); var copy = new Button(T("CopyPath"));
-            var dialog = new Dialog(T("DetailsTitle"), 110, 25, close, restart, open, reveal, copy);
+            var trash = new Button(T("TrashAction"));
+            var dialog = new Dialog(T("DetailsTitle"), 110, 27, close);
+            open.X = 1; reveal.X = Pos.Right(open) + 2; copy.X = Pos.Right(reveal) + 2;
+            open.Y = reveal.Y = copy.Y = Pos.AnchorEnd(4);
+            restart.X = 1; trash.X = Pos.Right(restart) + 2; restart.Y = trash.Y = Pos.AnchorEnd(3);
+            dialog.Add(open, reveal, copy, restart, trash);
+            trash.Clicked += () => { if (ConfirmTrash([id])) { Work(async () => Report(await engine.TrashManyAsync([id]))); Application.RequestStop(); } };
             var info = new TextView { X = 1, Y = 1, Width = Dim.Fill(1), Height = 8, ReadOnly = true, WordWrap = true, AllowsTab = false };
-            var segments = new TableView { X = 1, Y = 10, Width = Dim.Fill(1), Height = Dim.Fill(2), FullRowSelect = true };
+            var segments = new TableView { X = 1, Y = 10, Width = Dim.Fill(1), Height = Dim.Fill(5), FullRowSelect = true };
             dialog.Add(info, segments); close.Clicked += () => Application.RequestStop();
             restart.Clicked += () => { if (MessageBox.Query(T("RestartTitle"), T("RestartPrompt"), T("Cancel"), T("Start")) == 1) { Work(() => engine.RestartAsync(id)); Application.RequestStop(); } };
             async void Act(string action)
@@ -274,12 +304,15 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
             {
                 var s = engine.Snapshots().FirstOrDefault(s => s.Id == id); if (s == null) return;
                 var top = info.TopRow; var left = info.LeftColumn; var cursor = info.CursorPosition;
-                var detailText = T("ConnectionDetail", s.Connections, s.ConnectionLimit, s.ApplyingConnections ? T("ApplyingConnections") : T("Constraint_" + s.ConnectionConstraint), localization.Error(s.ConnectionError)) + "\n" + T("Details", localization.Name(s), localization.Phase(s.Phase), Size(s.Bytes), s.Total.HasValue ? Size(s.Total.Value) : T("Unknown"), localization.Rate(s.Speed), Duration(s.Eta), s.Connections, s.Source, s.Target, s.Retry, Duration(s.RetryIn), localization.Error(s.Error));
+                var detailText = T("ConnectionDetail", s.Connections, s.ConnectionLimit, s.ApplyingConnections ? T("ApplyingConnections") : T("Constraint_" + s.ConnectionConstraint), localization.Error(s.ConnectionError)) + "\n" + T("Details", QueueView.SafeText(localization.Name(s)), localization.Phase(s.Phase), Size(s.Bytes), s.Total.HasValue ? Size(s.Total.Value) : T("Unknown"), localization.Rate(s.Speed), Duration(s.Eta), s.Connections, QueueView.SafeText(s.Source), QueueView.SafeText(s.Target), s.Retry, Duration(s.RetryIn), localization.Error(s.Error));
                 detailText += "\n" + localization.Disk(s.DiskSpace);
                 if (s.WaitingForBandwidth) detailText += "\n" + T("BandwidthWaiting");
                 if (s.Phase == DownloadPhase.DiskPause) detailText += "\n" + T("DiskResumeHint");
+                detailText = string.Join("\n", detailText.Split('\n').Select(QueueView.SafeText));
+                if (s.State == DownloadState.Completed && !OperatingSystem.IsMacOS()) detailText += "\n" + T("TrashMacOnly");
                 if (info.Text.ToString() != detailText) { info.Text = detailText; info.CursorPosition = cursor; info.TopRow = top; info.LeftColumn = left; }
                 restart.Enabled = s.State == DownloadState.NeedsDecision; open.Enabled = reveal.Enabled = copy.Enabled = s.State == DownloadState.Completed && OperatingSystem.IsMacOS();
+                trash.Enabled = s.State == DownloadState.Completed && OperatingSystem.IsMacOS();
                 var data = new DataTable(); foreach (var c in new[] { T("Number"), T("Range"), T("Volume"), "%", T("State"), T("Retry"), T("RetryIn") }) data.Columns.Add(c);
                 foreach (var p in s.Segments) { var total = p.End - p.Start + 1; data.Rows.Add(p.Number.ToString(localization.Culture), $"{p.Start.ToString(localization.Culture)}–{p.End?.ToString(localization.Culture)}", $"{Size(p.Bytes)} / {(total.HasValue ? Size(total.Value) : "?")}", total > 0 ? localization.Number(100d * p.Bytes / total.Value) : "—", localization.Phase(p.Phase), T("RetryFormat", p.Retry), Duration(p.RetryIn)); }
                 var row = segments.SelectedRow; var column = segments.SelectedColumn; var offset = segments.RowOffset; var horizontal = segments.ColumnOffset; segments.Table = data;
@@ -316,11 +349,31 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
         var ids = Targets; if (ids.Length == 0) return;
         Dialog(() =>
         {
-            var choice = MessageBox.Query(T("RemoveTitle"), T("RemovePrompt", ids.Length), T("Cancel"), T("KeepParts"), T("DeleteParts"));
-            if (choice == 1) Work(async () => Report(await engine.RemoveManyAsync(ids)));
-            if (choice == 2 && MessageBox.Query(T("DeleteTitle"), T("DeletePrompt"), T("Cancel"), T("Delete")) == 1)
-                Work(async () => Report(await engine.RemoveManyAsync(ids, true)));
+            var dialog = new Dialog(T("RemoveTitle"), Math.Min(100, Application.Top.Bounds.Width - 2), 20);
+            var files = new TextView { X = 1, Y = 1, Width = Dim.Fill(1), Height = 7, ReadOnly = true, WordWrap = true, AllowsTab = false,
+                Text = T("RemovePrompt", ids.Length) + "\n" + string.Join("\n", rows.Where(j => ids.Contains(j.Id)).Select(j => QueueView.SafeText(localization.Name(j)))) };
+            var cancel = new Button(T("Cancel")) { X = 1, Y = 9 };
+            var keep = new Button(T("RemoveTitle")) { X = 1, Y = 11 };
+            var parts = new Button(T("DeleteParts")) { X = 1, Y = 13 };
+            var trash = new Button(T("TrashAction")) { X = 1, Y = 15, Enabled = OperatingSystem.IsMacOS() };
+            dialog.Add(files, cancel, keep, parts, trash);
+            if (!OperatingSystem.IsMacOS()) dialog.Add(new Label(T("TrashMacOnly")) { X = 1, Y = 16, Width = Dim.Fill(1) });
+            cancel.Clicked += () => Application.RequestStop();
+            keep.Clicked += () => { Work(async () => Report(await engine.RemoveManyAsync(ids))); Application.RequestStop(); };
+            parts.Clicked += () =>
+            {
+                var count = rows.Count(j => ids.Contains(j.Id) && j.State != DownloadState.Completed);
+                if (MessageBox.Query(T("DeleteTitle"), T("PartsConfirm", count, ids.Length - count), T("Cancel"), T("Delete")) == 1)
+                { Work(async () => Report(await engine.RemoveManyAsync(ids, true))); Application.RequestStop(); }
+            };
+            trash.Clicked += () => { if (ConfirmTrash(ids)) { Work(async () => Report(await engine.TrashManyAsync(ids))); Application.RequestStop(); } };
+            cancel.SetFocus(); Application.Run(dialog);
         });
+    }
+    private bool ConfirmTrash(Guid[] ids)
+    {
+        var count = engine.Snapshots().Count(j => ids.Contains(j.Id) && j.State == DownloadState.Completed);
+        return MessageBox.Query(T("TrashAction"), T("TrashConfirm", count, ids.Length - count), T("Cancel"), T("TrashAction")) == 1;
     }
     private void Settings() => Dialog(() =>
     {

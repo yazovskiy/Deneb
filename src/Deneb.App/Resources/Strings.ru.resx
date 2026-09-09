@@ -17,7 +17,7 @@ A — добавить; U — заменить URL; F2 — настройки
 Insert — отметить строку; Space — пауза/продолжение выбранных
 F3/F4 — выше/ниже; F5 — скачать следующей (без снятия паузы)
 F6 — общая пауза/продолжение
-Enter — подробности; Delete — убрать выбранные
+Enter — подробности; Delete — убрать из списка / действия с данными
 O — открыть; F7 — Finder; F8 — скопировать путь
 F9 — очистить завершённые; Q/Ctrl+C — выход
 Q / Ctrl+C — закрыть только интерфейс
@@ -74,10 +74,10 @@ F11 / F12 — подключиться / запустить при потере 
   <data name="RetryFormat" xml:space="preserve"><value>{0}/10</value></data>
   <data name="Replace" xml:space="preserve"><value>Заменить</value></data>
   <data name="ReplaceTitle" xml:space="preserve"><value>Новый URL того же файла</value></data>
-  <data name="RemoveTitle" xml:space="preserve"><value>Убрать задачи</value></data>
-  <data name="RemovePrompt" xml:space="preserve"><value>Задач: {0}. Готовые файлы останутся на диске.</value></data>
+  <data name="RemoveTitle" xml:space="preserve"><value>Убрать из списка</value></data>
+  <data name="RemovePrompt" xml:space="preserve"><value>Выбрано загрузок: {0}. Можно сохранить данные, удалить незавершённые или перенести готовые файлы в корзину.</value></data>
   <data name="KeepParts" xml:space="preserve"><value>Сохранить части</value></data>
-  <data name="DeleteParts" xml:space="preserve"><value>Удалить части</value></data>
+  <data name="DeleteParts" xml:space="preserve"><value>Удалить незавершённые данные</value></data>
   <data name="DeleteTitle" xml:space="preserve"><value>Удаление</value></data>
   <data name="DeletePrompt" xml:space="preserve"><value>Безвозвратно удалить незавершённые части выбранных задач?</value></data>
   <data name="Delete" xml:space="preserve"><value>Удалить</value></data>
@@ -93,11 +93,12 @@ F11 / F12 — подключиться / запустить при потере 
 Использование: deneb КОМАНДА [--state-dir ПУТЬ] [--json]
 add URL... | add --stdin [--destination ПУТЬ] [--name ИМЯ (одна задача)]
 list [--search ТЕКСТ] [--filter all|active|queued|paused|completed|attention]
-show ID | pause [ID...] | resume [ID...] | remove ID... [--delete-partial --yes]
+show ID | pause [ID...] | resume [ID...] | remove ID... [--delete-partial --yes | --trash --yes]
 start | status | stop
 ID: полный UUID или уникальный шестнадцатеричный префикс от 8 символов.
 Отсутствующий фон запускают только start, add и интерфейс.
-remove сохраняет файлы и части без обоих флагов удаления; итоговые файлы не удаляются никогда.
+remove по умолчанию сохраняет файлы и части. --delete-partial --yes удаляет только незавершённые данные; --trash --yes отправляет готовые файлы в корзину macOS. Безвозвратного удаления готовых файлов нет.
+Справка: deneb help | deneb help КОМАНДА | deneb КОМАНДА --help | deneb КОМАНДА -h
 stdin принимает ссылки и Android-строки без URL в истории оболочки. Режимы ввода несовместимы.
 JSON schemaVersion 1: стабильные английские состояния и числовые байты; исходные URL не выводятся.
 Коды выхода: 0 успех/пропуск; 1 ошибка/неизвестный результат; 2 неверный ввод; 3 частичная ошибка.
@@ -197,7 +198,7 @@ F2: максимум соединений на файл (применяется 
   <data name="DiskUnknown" xml:space="preserve"><value>Размер неизвестен: место проверяется по мере записи с учётом сборки.</value></data>
   <data name="DiskResumeHint" xml:space="preserve"><value>Освободите место, закройте диалог и нажмите Space. Автопродолжения нет.</value></data>
   <data name="CliInvalid" xml:space="preserve"><value>Неверная команда или параметры. Используйте deneb --help.</value></data>
-  <data name="CliDeleteConfirm" xml:space="preserve"><value>Удаление частей требует одновременно --delete-partial и --yes.</value></data>
+  <data name="CliDeleteConfirm" xml:space="preserve"><value>Выберите --delete-partial или --trash вместе с --yes, но не оба действия.</value></data>
   <data name="CliId" xml:space="preserve"><value>Укажите полный UUID или уникальный шестнадцатеричный префикс от 8 символов. Каждый ID должен соответствовать одной задаче.</value></data>
   <data name="CliSingleName" xml:space="preserve"><value>--name допускается только для одной загрузки.</value></data>
   <data name="CliInvalidUrl" xml:space="preserve"><value>Укажите корректные HTTP/HTTPS-ссылки или строки загрузок Android.</value></data>
@@ -222,4 +223,84 @@ F2: максимум соединений на файл (применяется 
   <data name="Filter_paused" xml:space="preserve"><value>Приостановленные</value></data>
   <data name="Filter_completed" xml:space="preserve"><value>Завершённые</value></data>
   <data name="Filter_attention" xml:space="preserve"><value>Требуют внимания</value></data>
+  <data name="HelpOverview" xml:space="preserve"><value>Обзор</value></data>
+  <data name="HelpKeyboard" xml:space="preserve"><value>Клавиши</value></data>
+  <data name="HelpCli" xml:space="preserve"><value>Команды CLI</value></data>
+  <data name="TrashAction" xml:space="preserve"><value>В корзину и убрать из списка</value></data>
+  <data name="TrashMacOnly" xml:space="preserve"><value>Корзина доступна только на macOS.</value></data>
+  <data name="TrashConfirm" xml:space="preserve"><value>Перенести {0} готовых файлов в системную корзину и убрать записи? {1} незавершённых/отсутствующих записей будут пропущены. При ошибках записи остаются.</value></data>
+  <data name="PartsConfirm" xml:space="preserve"><value>Безвозвратно удалить незавершённые данные {0} загрузок и убрать записи? {1} завершённых записей будут пропущены.</value></data>
+  <data name="TrashMovedButRetained" xml:space="preserve"><value>Файл перенесён в корзину, но запись осталась. Уберите её из списка; не повторяйте действие с файлом.</value></data>
+  <data name="Error_TrashFailed" xml:space="preserve"><value>Не удалось перенести файл в корзину. Проверьте права доступа и доступность тома; запись сохранена.</value></data>
+  <data name="Error_UnsafeFileType" xml:space="preserve"><value>Разрешён только обычный файл; ссылки и каталоги не перемещаются.</value></data>
+  <data name="Error_TaskChanged" xml:space="preserve"><value>Загрузка изменилась. Запись сохранена; обновите список.</value></data>
+  <data name="CliCommonHelp" xml:space="preserve"><value>Общие параметры: --state-dir ПУТЬ выбирает очередь; --json возвращает schemaVersion 1 без переведённых текстов.
+ID: полный UUID или уникальный шестнадцатеричный префикс от 8 символов. Все ID проверяются до изменений.
+Коды выхода: 0 успех/пропуск, 1 ошибка или неизвестный результат, 2 неверный ввод, 3 частичная ошибка.
+Потерянный ответ не вызывает автоматический повтор. Сначала проверьте очередь.
+Справка: deneb help КОМАНДА, deneb КОМАНДА --help или -h. Справка не запускает фон и не изменяет хранилище.</value></data>
+  <data name="CliCommand_add" xml:space="preserve"><value>Использование: deneb add URL... | add --stdin [--destination PATH] [--name NAME]
+
+Проверяет все HTTP/HTTPS-ссылки до запуска фона. Добавляет последовательно до первой ошибки. --stdin принимает также Android/Markdown-строки без переноса прогресса; режимы ввода несовместимы. --destination задаёт папку для всей группы; --name — имя одной загрузки. Общая пауза сохраняется. Stdin не оставляет приватные ссылки в истории оболочки.
+
+Примеры:
+deneb add 'https://example.org/file.zip' --destination ./downloads
+deneb add --stdin &lt; links.txt</value></data>
+  <data name="CliCommand_list" xml:space="preserve"><value>Использование: deneb list [--search TEXT] [--filter all|active|queued|paused|completed|attention]
+
+Показывает очередь в её порядке. Поиск — подстрока имени без учёта регистра, совместно с фильтром. attention включает ошибки, требующие решения и дисковые паузы. Не запускает отсутствующий фон: возвращает пустой результат с backgroundRunning=false.
+
+Примеры:
+deneb list --filter active
+deneb list --search film --json</value></data>
+  <data name="CliCommand_show" xml:space="preserve"><value>Использование: deneb show ID
+
+Показывает загрузку, путь, домен источника, прогресс и сегменты. Не запускает фон; при его отсутствии или неоднозначном ID сообщает ошибку.
+
+Примеры:
+deneb show 12345678
+deneb show 12345678 --json</value></data>
+  <data name="CliCommand_pause" xml:space="preserve"><value>Использование: deneb pause [ID...]
+
+Без ID: общая пауза останавливает передачи, сохраняя намерение продолжиться. С ID: индивидуальная пауза. Не запускает фон; отсутствие фона — ошибка. Завершённые и неподходящие задачи пропускаются.
+
+Примеры:
+deneb pause
+deneb pause 12345678 abcdef12</value></data>
+  <data name="CliCommand_resume" xml:space="preserve"><value>Использование: deneb resume [ID...]
+
+Без ID: снимает только общую паузу, сохраняя ручные и дисковые паузы. С ID: продолжает приостановленные и повторяет ошибочные задачи; завершённые и требующие решения пропускаются. Не снимает общую паузу и не запускает отсутствующий фон.
+
+Примеры:
+deneb resume
+deneb resume 12345678</value></data>
+  <data name="CliCommand_remove" xml:space="preserve"><value>Использование: deneb remove ID... [--delete-partial --yes | --trash --yes]
+
+По умолчанию: убрать записи из списка, сохранив все файлы и части. --delete-partial: безвозвратно удалить незавершённые части и записи; завершённые пропускаются. --trash: только macOS, готовые обычные файлы — в системную корзину, затем убрать записи; незавершённые пропускаются. Для обоих действий нужен --yes; флаги несовместимы. Готовые файлы безвозвратно не удаляются. При ошибках записи сохраняются; запасного способа удаления нет. Фон не запускается.
+
+Примеры:
+deneb remove 12345678
+deneb remove 12345678 --trash --yes
+deneb remove abcdef12 --delete-partial --yes</value></data>
+  <data name="CliCommand_start" xml:space="preserve"><value>Использование: deneb start
+
+Запускает фон без интерфейса. Если фон уже работает — безопасно подключается без второго процесса. Несовместимый фон нужно остановить его собственной версией.
+
+Примеры:
+deneb start
+deneb start --state-dir ./test-state</value></data>
+  <data name="CliCommand_status" xml:space="preserve"><value>Использование: deneb status
+
+Показывает наличие фона, общее число загрузок, активные задачи и общую паузу. Не запускает фон. Отсутствующий фон — успешный результат.
+
+Примеры:
+deneb status
+deneb status --json</value></data>
+  <data name="CliCommand_stop" xml:space="preserve"><value>Использование: deneb stop
+
+Останавливает передачи, сохраняет очередь и завершает фон. Не запускает его; отсутствие фона — успех. Q/Ctrl+C в интерфейсе закрывают только интерфейс, а не фон.
+
+Примеры:
+deneb stop
+deneb stop --state-dir ./test-state</value></data>
 </root>

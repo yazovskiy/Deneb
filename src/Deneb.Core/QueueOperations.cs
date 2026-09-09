@@ -66,10 +66,29 @@ public sealed partial class DownloadEngine
         foreach (var id in targets)
         {
             lock (gate) if (!library.Jobs.Any(j => j.Id == id)) { skipped.Add(id); continue; }
+            lock (gate) if (deletePartial && Find(id).State == DownloadState.Completed) { skipped.Add(id); continue; }
             try { await RemoveAsync(id, deletePartial); processed.Add(id); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { failed.Add(id); }
         }
         return new(processed, skipped, failed);
+    }
+    // Called only after an external, confirmed file operation. Failure retains the row;
+    // restarting then shows a completed entry whose file may now be absent.
+    public void ForgetCompleted(Guid id, string expectedTarget)
+    {
+        lock (gate)
+        {
+            var index = library.Jobs.FindIndex(j => j.Id == id);
+            if (index < 0 || library.Jobs[index].State != DownloadState.Completed || library.Jobs[index].Target != expectedTarget)
+                throw new ProblemException(ProblemCode.TaskChanged);
+            var job = library.Jobs[index]; library.Jobs.RemoveAt(index);
+            try { store.Save(library); PersistenceError = null; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                library.Jobs.Insert(index, job); PersistenceError = new(ProblemCode.Persistence);
+                throw new ProblemException(PersistenceError);
+            }
+        }
     }
     public BatchResult ClearCompleted()
     {

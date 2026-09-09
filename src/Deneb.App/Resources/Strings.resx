@@ -17,7 +17,7 @@ A — add; U — replace URL; F2 — settings
 Insert — mark row; Space — pause/resume selected
 F3/F4 — move up/down; F5 — download next (does not resume)
 F6 — pause/resume all
-Enter — details; Delete — remove selected
+Enter — details; Delete — remove from list / data actions
 O — open; F7 — Finder; F8 — copy path
 F9 — clear completed; Q/Ctrl+C — quit
 Q / Ctrl+C — close interface only
@@ -74,10 +74,10 @@ Server check: retry {9}/10 · wait {10}
   <data name="RetryFormat" xml:space="preserve"><value>{0}/10</value></data>
   <data name="Replace" xml:space="preserve"><value>Replace</value></data>
   <data name="ReplaceTitle" xml:space="preserve"><value>New URL for the same file</value></data>
-  <data name="RemoveTitle" xml:space="preserve"><value>Remove tasks</value></data>
-  <data name="RemovePrompt" xml:space="preserve"><value>Tasks: {0}. Completed files will stay on disk.</value></data>
+  <data name="RemoveTitle" xml:space="preserve"><value>Remove from list</value></data>
+  <data name="RemovePrompt" xml:space="preserve"><value>Selected downloads: {0}. Choose whether to keep data, delete unfinished data, or move completed files to Trash.</value></data>
   <data name="KeepParts" xml:space="preserve"><value>Keep parts</value></data>
-  <data name="DeleteParts" xml:space="preserve"><value>_Delete parts</value></data>
+  <data name="DeleteParts" xml:space="preserve"><value>Delete unfinished data</value></data>
   <data name="DeleteTitle" xml:space="preserve"><value>Delete partial data</value></data>
   <data name="DeletePrompt" xml:space="preserve"><value>Permanently delete partial data for the selected tasks?</value></data>
   <data name="Delete" xml:space="preserve"><value>Delete</value></data>
@@ -93,11 +93,12 @@ Server check: retry {9}/10 · wait {10}
 Usage: deneb COMMAND [--state-dir PATH] [--json]
 add URL... | add --stdin [--destination PATH] [--name NAME (one task only)]
 list [--search TEXT] [--filter all|active|queued|paused|completed|attention]
-show ID | pause [ID...] | resume [ID...] | remove ID... [--delete-partial --yes]
+show ID | pause [ID...] | resume [ID...] | remove ID... [--delete-partial --yes | --trash --yes]
 start | status | stop
 IDs: full UUID or unique hexadecimal prefix of at least 8 characters.
 Only start, add and the interface start an absent background process.
-remove preserves files and parts unless both deletion flags are supplied; final files are never deleted.
+remove preserves files and parts by default. --delete-partial --yes deletes unfinished data only; --trash --yes sends completed files to macOS Trash. No permanent deletion of completed files.
+Help: deneb help | deneb help COMMAND | deneb COMMAND --help | deneb COMMAND -h
 stdin accepts URLs or Android rows and avoids URLs in shell history. Input modes cannot be combined.
 JSON schemaVersion 1 uses stable English states and numeric bytes; no source URLs are printed.
 Exit codes: 0 success/skipped; 1 failure/unknown outcome; 2 invalid input; 3 partial failure.
@@ -197,7 +198,7 @@ F2: maximum connections per file (applies live), language and settings.
   <data name="DiskUnknown" xml:space="preserve"><value>Unknown file size: space is checked incrementally, including assembly.</value></data>
   <data name="DiskResumeHint" xml:space="preserve"><value>Free disk space, close this dialog and press Space to retry. No automatic resume.</value></data>
   <data name="CliInvalid" xml:space="preserve"><value>Invalid command or options. Use deneb --help.</value></data>
-  <data name="CliDeleteConfirm" xml:space="preserve"><value>Deleting parts requires both --delete-partial and --yes.</value></data>
+  <data name="CliDeleteConfirm" xml:space="preserve"><value>Choose --delete-partial or --trash with --yes, never both.</value></data>
   <data name="CliId" xml:space="preserve"><value>Use a full UUID or a unique hexadecimal prefix of at least 8 characters. Every ID must match one task.</value></data>
   <data name="CliSingleName" xml:space="preserve"><value>--name requires exactly one download.</value></data>
   <data name="CliInvalidUrl" xml:space="preserve"><value>Enter valid HTTP/HTTPS URLs or Android download rows.</value></data>
@@ -222,4 +223,84 @@ ETA: {2}; connections: {3}/{4}</value></data>
   <data name="Filter_paused" xml:space="preserve"><value>Paused</value></data>
   <data name="Filter_completed" xml:space="preserve"><value>Completed</value></data>
   <data name="Filter_attention" xml:space="preserve"><value>Attention</value></data>
+  <data name="HelpOverview" xml:space="preserve"><value>Overview</value></data>
+  <data name="HelpKeyboard" xml:space="preserve"><value>Keyboard</value></data>
+  <data name="HelpCli" xml:space="preserve"><value>CLI commands</value></data>
+  <data name="TrashAction" xml:space="preserve"><value>Move to Trash and remove from list</value></data>
+  <data name="TrashMacOnly" xml:space="preserve"><value>Trash is available on macOS only.</value></data>
+  <data name="TrashConfirm" xml:space="preserve"><value>Move {0} completed file(s) to the system Trash and remove their entries? {1} unfinished/missing entries will be skipped. Errors keep their entries.</value></data>
+  <data name="PartsConfirm" xml:space="preserve"><value>Permanently delete unfinished data for {0} download(s) and remove their entries? {1} completed entries will be skipped.</value></data>
+  <data name="TrashMovedButRetained" xml:space="preserve"><value>The file was moved to Trash, but its entry was retained. Remove it from the list; do not repeat the file operation.</value></data>
+  <data name="Error_TrashFailed" xml:space="preserve"><value>Could not move the file to Trash. Check access permissions and volume availability; the entry is retained.</value></data>
+  <data name="Error_UnsafeFileType" xml:space="preserve"><value>Only a regular file is allowed; links and directories are not moved.</value></data>
+  <data name="Error_TaskChanged" xml:space="preserve"><value>The download changed. Its entry was retained; refresh the list.</value></data>
+  <data name="CliCommonHelp" xml:space="preserve"><value>Common options: --state-dir PATH selects the queue; --json returns schemaVersion 1 (no translated text).
+IDs: full UUID or unique hexadecimal prefix, at least 8 characters. Multiple IDs are checked together before changes.
+Exit codes: 0 success/skipped, 1 failure or unknown outcome, 2 invalid input, 3 partial failure.
+A lost response is never retried automatically. Check the queue first.
+Help: deneb help COMMAND, deneb COMMAND --help or -h. Help never starts the daemon or modifies state.</value></data>
+  <data name="CliCommand_add" xml:space="preserve"><value>Usage: deneb add URL... | add --stdin [--destination PATH] [--name NAME]
+
+Validates all HTTP/HTTPS URLs before starting the daemon. Adds sequentially, stopping at the first failure. --stdin also accepts Android/Markdown rows; Android progress is ignored. Do not combine stdin and URL arguments. --destination applies to all inputs; --name requires one input. Global pause is respected. Stdin avoids private URLs in shell history.
+
+Examples:
+deneb add 'https://example.org/file.zip' --destination ./downloads
+deneb add --stdin &lt; links.txt</value></data>
+  <data name="CliCommand_list" xml:space="preserve"><value>Usage: deneb list [--search TEXT] [--filter all|active|queued|paused|completed|attention]
+
+Shows the current queue in order. Search matches a filename substring without case sensitivity. Filters combine with search. Attention includes failures, decisions and disk pauses. Does not start an absent daemon: returns an empty result with backgroundRunning=false.
+
+Examples:
+deneb list --filter active
+deneb list --search film --json</value></data>
+  <data name="CliCommand_show" xml:space="preserve"><value>Usage: deneb show ID
+
+Shows one download, path, host-only source, progress and segments. Does not start the daemon; reports an error if it is absent or the ID does not match uniquely.
+
+Examples:
+deneb show 12345678
+deneb show 12345678 --json</value></data>
+  <data name="CliCommand_pause" xml:space="preserve"><value>Usage: deneb pause [ID...]
+
+Without IDs: global pause stops transfers but preserves their intention to continue. With IDs: individual pause. Does not start the daemon; absence is an error. Completed and ineligible tasks are skipped.
+
+Examples:
+deneb pause
+deneb pause 12345678 abcdef12</value></data>
+  <data name="CliCommand_resume" xml:space="preserve"><value>Usage: deneb resume [ID...]
+
+Without IDs: remove only global pause, retaining manual and disk pauses. With IDs: resume paused tasks and retry failures; completed and decision-required tasks are skipped. Does not lift global pause or start an absent daemon.
+
+Examples:
+deneb resume
+deneb resume 12345678</value></data>
+  <data name="CliCommand_remove" xml:space="preserve"><value>Usage: deneb remove ID... [--delete-partial --yes | --trash --yes]
+
+Default: remove entries from the list, preserving all files and parts. --delete-partial: permanently delete unfinished parts and their entries; completed entries are skipped. --trash: macOS only, move completed regular files to system Trash, then remove entries; unfinished tasks are skipped. Both data actions require --yes and cannot be combined. Final files are never permanently deleted. Errors retain entries; no fallback deletion. Does not start the daemon.
+
+Examples:
+deneb remove 12345678
+deneb remove 12345678 --trash --yes
+deneb remove abcdef12 --delete-partial --yes</value></data>
+  <data name="CliCommand_start" xml:space="preserve"><value>Usage: deneb start
+
+Starts the background process without a UI. If already running, connects safely without starting another. An incompatible daemon must be stopped using its own version.
+
+Examples:
+deneb start
+deneb start --state-dir ./test-state</value></data>
+  <data name="CliCommand_status" xml:space="preserve"><value>Usage: deneb status
+
+Shows whether the daemon is running, total/active task counts and global pause. Never starts it. An absent daemon is a successful result.
+
+Examples:
+deneb status
+deneb status --json</value></data>
+  <data name="CliCommand_stop" xml:space="preserve"><value>Usage: deneb stop
+
+Stops transfers, saves the queue and shuts down the daemon. Does not start it; an absent daemon is success. Q/Ctrl+C in the UI closes only the UI, not the daemon.
+
+Examples:
+deneb stop
+deneb stop --state-dir ./test-state</value></data>
 </root>

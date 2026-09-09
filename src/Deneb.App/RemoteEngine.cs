@@ -21,6 +21,7 @@ public sealed class RemoteEngine(ControlClient client, LocalEndpoint endpoint) :
     public async Task<BatchResult> PauseManyAsync(Guid[] ids) => (await client.SendAsync(new() { Command = Command.Pause, Ids = ids })).Batch!;
     public async Task<BatchResult> ResumeManyAsync(Guid[] ids) => (await client.SendAsync(new() { Command = Command.Resume, Ids = ids })).Batch!;
     public async Task<BatchResult> RemoveManyAsync(Guid[] ids, bool deletePartial = false) => (await client.SendAsync(new() { Command = Command.Remove, Ids = ids, DeletePartial = deletePartial })).Batch!;
+    public async Task<BatchResult> TrashManyAsync(Guid[] ids) => (await client.SendAsync(new() { Command = Command.Trash, Ids = ids })).Batch!;
     public async Task<BatchResult> ClearCompletedAsync() => (await client.SendAsync(new() { Command = Command.Clear })).Batch!;
     public async Task<string> GetUrlAsync(Guid id) => (await client.SendAsync(new() { Command = Command.Url, Job = id })).Url!;
     public Task<Response> RestartAsync(Guid id) => client.SendAsync(new() { Command = Command.Restart, Job = id });

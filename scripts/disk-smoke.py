@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory(prefix="deneb-disk-acceptance-") as temp:
                     data += block
                 return data
             for command in (0, 8):  # Hello, Resume selected task (not global ResumeAll).
-                data = json.dumps({"Id": str(uuid.uuid4()), "Protocol": 3, "Version": "2.2.0", "Command": command, "Ids": [job_id]}).encode()
+                data = json.dumps({"Id": str(uuid.uuid4()), "Protocol": 4, "Version": "2.2.0", "Command": command, "Ids": [job_id]}).encode()
                 connection.sendall(struct.pack("<i", len(data)) + data)
                 response = json.loads(receive(struct.unpack("<i", receive(4))[0]))
                 assert response["Error"] is None, response

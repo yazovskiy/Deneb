@@ -6,6 +6,7 @@ using Command = Deneb.Control.Command;
 namespace Deneb.App;
 
 public sealed record CliError(string Code, int? HttpStatus = null);
+public sealed record CliFailure(Guid Id, CliError Error, bool FileMoved);
 public sealed record CliSegment(int Number, long Start, long? End, long Bytes, bool Complete, string Phase, int Retry, double? RetryInSeconds);
 public sealed record CliJob(Guid Id, string Name, string State, string Phase, long Bytes, long? TotalBytes, double BytesPerSecond,
     double? EtaSeconds, int Connections, int ConnectionLimit, string Source, string? Target, CliError? Error, CliSegment[] Segments)
@@ -25,6 +26,7 @@ public sealed class CliResult
     public Guid[] Processed { get; set; } = [];
     public Guid[] Skipped { get; set; } = [];
     public Guid[] Failed { get; set; } = [];
+    public CliFailure[] Failures { get; set; } = [];
     public int? FailedInput { get; set; }
     public int[] NotSentInputs { get; set; } = [];
     public bool OutcomeUnknown { get; set; }
@@ -84,7 +86,7 @@ public static class CliRunner
                         var ids = CliOptions.ResolveIds(options.Values, client.State.Jobs);
                         var command = options.Command switch
                         {
-                            "stop" => Command.Stop, "remove" => Command.Remove,
+                            "stop" => Command.Stop, "remove" => options.Trash ? Command.Trash : Command.Remove,
                             "pause" => ids.Length == 0 ? Command.PauseAll : Command.Pause,
                             _ => ids.Length == 0 ? Command.ResumeAll : Command.Resume
                         };
@@ -94,6 +96,7 @@ public static class CliRunner
                         if (response.Batch is { } batch)
                         {
                             result.Processed = batch.Processed.ToArray(); result.Skipped = batch.Skipped.ToArray(); result.Failed = batch.Failed.ToArray();
+                            result.Failures = batch.Errors.Select(f => new CliFailure(f.Id, new(f.Error.Code.ToString(), f.Error.Status), f.FileMoved)).ToArray();
                             if (result.Failed.Length > 0) { code = result.Processed.Length + result.Skipped.Length > 0 ? 3 : 1; error = new("BatchFailed"); message = language.Text("CliBatchFailed"); }
                         }
                         if (options.Command == "stop") { await BackgroundLauncher.WaitStoppedAsync(endpoint); result.BackgroundRunning = false; }
@@ -137,7 +140,9 @@ public static class CliRunner
             if (options.Command is "pause" or "resume" or "remove") await output.WriteLineAsync(language.Text("Batch", result.Processed.Length, result.Skipped.Length, result.Failed.Length));
             foreach (var id in result.Processed) await output.WriteLineAsync(language.Text("CliProcessed", id));
             foreach (var id in result.Skipped) await output.WriteLineAsync(language.Text("CliSkipped", id));
-            foreach (var id in result.Failed) await output.WriteLineAsync(language.Text("CliFailed", id));
+            foreach (var id in result.Failed) await errors.WriteLineAsync(language.Text("CliFailed", id));
+            foreach (var failure in result.Failures)
+                await errors.WriteLineAsync($"{failure.Id}: {language.Error(new Problem(Enum.Parse<ProblemCode>(failure.Error.Code), failure.Error.HttpStatus))}{(failure.FileMoved ? " " + language.Text("TrashMovedButRetained") : "")}");
             if (result.FailedInput.HasValue) await errors.WriteLineAsync(language.Text("CliInputFailed", result.FailedInput, string.Join(", ", result.NotSentInputs)));
             if (message != null) await errors.WriteLineAsync(QueueView.SafeText(message));
         }
