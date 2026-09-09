@@ -53,14 +53,16 @@ public static class TrashOperations
     public static BatchResult Execute(DownloadEngine engine, IEnumerable<Guid> ids, ITrashService trash)
     {
         List<Guid> processed = [], skipped = [], failed = []; List<BatchFailure> errors = [];
+        var candidates = engine.Snapshots().Where(j => j.State == DownloadState.Completed).ToDictionary(j => j.Id);
         foreach (var id in ids.Distinct())
         {
             var job = engine.Snapshots().FirstOrDefault(j => j.Id == id);
-            if (job == null || job.State != DownloadState.Completed) { skipped.Add(id); continue; }
+            if (!candidates.TryGetValue(id, out var original) || job == null || job.State != DownloadState.Completed) { skipped.Add(id); continue; }
             var moved = false;
             try
             {
                 if (!trash.Supported) throw new ProblemException(ProblemCode.UnsupportedPlatform);
+                if (job.Target != original.Target) throw new ProblemException(ProblemCode.TaskChanged);
                 if (job.Target == null) throw new ProblemException(ProblemCode.MissingFile);
                 var info = new FileInfo(job.Target);
                 if (info.LinkTarget != null || Directory.Exists(job.Target)) throw new ProblemException(ProblemCode.UnsafeFileType);

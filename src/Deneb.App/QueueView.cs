@@ -4,6 +4,11 @@ namespace Deneb.App;
 
 public static class QueueView
 {
+    public static Guid[] TrashTargets(IEnumerable<Snapshot> jobs, IEnumerable<Guid> selection)
+    {
+        var selected = selection.ToHashSet();
+        return jobs.Where(j => selected.Contains(j.Id) && j.State == DownloadState.Completed).Select(j => j.Id).Distinct().ToArray();
+    }
     public static readonly string[] Filters = ["all", "active", "queued", "paused", "completed", "attention"];
     public static IReadOnlyList<Snapshot> Apply(IEnumerable<Snapshot> jobs, string search, string filter) => jobs.Where(j =>
         j.Name.Contains(search, StringComparison.OrdinalIgnoreCase) && (filter switch

@@ -141,6 +141,20 @@ public sealed class Polish22Tests : IDisposable
         await engine.RemoveManyAsync([job.Id]); Assert.Empty(engine.Snapshots()); Assert.True(File.Exists(job.Target));
     }
     [Fact]
+    public async Task ConfirmationDoesNotExpandWhenAnotherDownloadCompletes()
+    {
+        var a = Completed("confirmed"); var b = Completed("was-active"); Seed(a, b);
+        await using var engine = new DownloadEngine(Path.Combine(root, "state"));
+        var completed = engine.Snapshots().ToArray();
+        var atConfirmation = completed.Select(j => j.Id == b.Id ? j with { State = DownloadState.Downloading } : j).ToArray();
+        var confirmed = QueueView.TrashTargets(atConfirmation, [a.Id, b.Id]);
+        Assert.Equal(new[] { a.Id }, confirmed);
+        var service = new FakeTrash(path => File.Move(path, path + ".fixture-trash"));
+        var result = TrashOperations.Execute(engine, confirmed, service);
+        Assert.Equal(new[] { a.Id }, result.Processed);
+        Assert.True(File.Exists(b.Target)); Assert.Equal(b.Id, engine.Snapshots().Single().Id);
+    }
+    [Fact]
     public async Task TrashIsCoordinatedByDaemonAndJsonContainsPerIdFailures()
     {
         var good = Completed("good"); var bad = Completed("bad"); Seed(good, bad);

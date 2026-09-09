@@ -14,6 +14,8 @@ All commands accept `--state-dir PATH`. Paths resolve against the CLI working di
 
 Trash rechecks the completed entry and its saved target; missing files, directories and symbolic links are rejected without removing the entry. Failures retain the entry. If saving the queue fails after a successful move, the file remains in Trash and the entry may remain in the list: check it, then remove the entry normally. No automatic rollback or repeat occurs. F9 always preserves files.
 
+The TUI freezes eligible IDs before showing Trash confirmation: downloads that finish while you read the prompt are still skipped. The daemon also fixes batch eligibility at command start and rechecks each target before moving it.
+
 ```sh
 deneb help remove
 deneb remove TASK_ID --trash --yes   # macOS only, recoverable through system Trash

@@ -287,7 +287,7 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
             open.Y = reveal.Y = copy.Y = Pos.AnchorEnd(4);
             restart.X = 1; trash.X = Pos.Right(restart) + 2; restart.Y = trash.Y = Pos.AnchorEnd(3);
             dialog.Add(open, reveal, copy, restart, trash);
-            trash.Clicked += () => { if (ConfirmTrash([id])) { Work(async () => Report(await engine.TrashManyAsync([id]))); Application.RequestStop(); } };
+            trash.Clicked += () => { if (ConfirmTrash([id]) is { } confirmed) { Work(() => TrashConfirmedAsync([id], confirmed)); Application.RequestStop(); } };
             var info = new TextView { X = 1, Y = 1, Width = Dim.Fill(1), Height = 8, ReadOnly = true, WordWrap = true, AllowsTab = false };
             var segments = new TableView { X = 1, Y = 10, Width = Dim.Fill(1), Height = Dim.Fill(5), FullRowSelect = true };
             dialog.Add(info, segments); close.Clicked += () => Application.RequestStop();
@@ -366,14 +366,20 @@ sealed class DenebUi(RemoteEngine engine, Localization localization)
                 if (MessageBox.Query(T("DeleteTitle"), T("PartsConfirm", count, ids.Length - count), T("Cancel"), T("Delete")) == 1)
                 { Work(async () => Report(await engine.RemoveManyAsync(ids, true))); Application.RequestStop(); }
             };
-            trash.Clicked += () => { if (ConfirmTrash(ids)) { Work(async () => Report(await engine.TrashManyAsync(ids))); Application.RequestStop(); } };
+            trash.Clicked += () => { if (ConfirmTrash(ids) is { } confirmed) { Work(() => TrashConfirmedAsync(ids, confirmed)); Application.RequestStop(); } };
             cancel.SetFocus(); Application.Run(dialog);
         });
     }
-    private bool ConfirmTrash(Guid[] ids)
+    private Guid[]? ConfirmTrash(Guid[] ids)
     {
-        var count = engine.Snapshots().Count(j => ids.Contains(j.Id) && j.State == DownloadState.Completed);
-        return MessageBox.Query(T("TrashAction"), T("TrashConfirm", count, ids.Length - count), T("Cancel"), T("TrashAction")) == 1;
+        var confirmed = QueueView.TrashTargets(engine.Snapshots(), ids);
+        return MessageBox.Query(T("TrashAction"), T("TrashConfirm", confirmed.Length, ids.Length - confirmed.Length), T("Cancel"), T("TrashAction")) == 1 ? confirmed : null;
+    }
+    private async Task TrashConfirmedAsync(Guid[] selection, Guid[] confirmed)
+    {
+        // A download completing while confirmation is open must not enlarge consent.
+        var result = await engine.TrashManyAsync(confirmed);
+        Report(result with { Skipped = result.Skipped.Concat(selection.Except(confirmed)).Distinct().ToArray() });
     }
     private void Settings() => Dialog(() =>
     {
