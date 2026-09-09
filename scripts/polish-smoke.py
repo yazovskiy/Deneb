@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Isolated EN/RU PTY: resize, names, help tabs and safe deletion cancellation."""
 import fcntl
+import errno
 import json
 import os
 from pathlib import Path
@@ -36,7 +37,14 @@ for language in ("en", "ru"):
         def pump(seconds=0.5):
             end = time.monotonic() + seconds
             while time.monotonic() < end:
-                if select.select([master], [], [], 0.05)[0]: output.extend(os.read(master, 65536))
+                if select.select([master], [], [], 0.05)[0]:
+                    try:
+                        data = os.read(master, 65536)
+                        if not data: return
+                        output.extend(data)
+                    except OSError as error:
+                        if error.errno == errno.EIO: return  # Linux PTY hangup after normal exit
+                        raise
 
         def plain():
             return re.sub(rb"\x1b\[[0-?]*[ -/]*[@-~]|\x1b[()][A-Z0-9]|\x1b[=>]", b"", output).decode(errors="replace")
