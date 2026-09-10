@@ -1,6 +1,6 @@
 # Experimental Windows / Linux builds · Экспериментальные сборки
 
-These are **Deneb 2.2.0 experimental platform builds**, not stable Windows/Linux releases. The application version is 2.2.0; these archives are prepared for acceptance, not yet published. Stable macOS releases remain separate.
+These are **Deneb 2.2.0 experimental platform builds**, not stable Windows/Linux releases. The application version is 2.2.0; these archives are distributed as a separate pre-release. Stable macOS releases remain separate.
 
 - Windows x64 and Linux x64 (glibc) only. Linux builds are tested on Ubuntu in CI; Alpine/musl and ARM64 are not included.
 - The .NET runtime is bundled. Linux still needs the OS libraries required by .NET 10 (including ICU, OpenSSL and zlib).
@@ -14,7 +14,7 @@ These are **Deneb 2.2.0 experimental platform builds**, not stable Windows/Linux
 
 ## По-русски
 
-Это **экспериментальные сборки Deneb 2.2.0 для Windows/Linux**, не стабильный релиз для этих платформ. Версия приложения — 2.2.0; архивы подготовлены для приёмки, ещё не опубликованы.
+Это **экспериментальные сборки Deneb 2.2.0 для Windows/Linux**, не стабильный релиз для этих платформ. Версия приложения — 2.2.0; архивы доступны в отдельном предварительном релизе.
 
 Поддерживаются только x64: Windows и Linux с glibc. .NET включён, но Linux требует системные библиотеки runtime (включая ICU, OpenSSL и zlib). ARM64 и Alpine/musl не включены. Автотесты не заменяют ручную приёмку терминального интерфейса; клавиши и отрисовка могут зависеть от терминала. Открытие файла, показ в файловом менеджере и копирование пути пока доступны только на macOS.
 

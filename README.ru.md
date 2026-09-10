@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/yazovskiy/Deneb/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/yazovskiy/Deneb?color=8b9cff&style=flat-square"></a>
   <img alt="macOS Apple Silicon" src="https://img.shields.io/badge/macOS-Apple%20Silicon-111827?style=flat-square&logo=apple">
-  <a href="https://github.com/yazovskiy/Deneb/releases/tag/v2.1.0-experimental.1"><img alt="Windows / Linux experimental" src="https://img.shields.io/badge/Windows%20%2F%20Linux-experimental-fbbf24?style=flat-square"></a>
+  <a href="https://github.com/yazovskiy/Deneb/releases/tag/v2.2.0-experimental.1"><img alt="Windows / Linux experimental" src="https://img.shields.io/badge/Windows%20%2F%20Linux-experimental-fbbf24?style=flat-square"></a>
   <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-7dd3fc?style=flat-square"></a>
 </p>
@@ -38,7 +38,7 @@ deneb remove ID_ЗАДАЧИ
 
 В интерфейсе **/** открывает поиск по имени и фильтр; **Ctrl+L** сбрасывает условия. Скрытые отметки сохраняются, но массовые действия затрагивают только видимые отметки, иначе текущую видимую строку. F3/F4 меняют полный порядок, F9 очищает все завершённые записи, включая скрытые. Поиск сохраняется только в текущей UI-сессии. [Контракт CLI / JSON](docs/cli.md).
 
-Перед обновлением выполните `deneb stop` старым бинарником. В 2.2 используется IPC v4, хранилище остаётся v5. Ссылки на опубликованные сборки ниже пока ведут на 2.1; публикация 2.2 — после приёмки.
+Перед обновлением выполните `deneb stop` старым бинарником. В 2.2 используется IPC v4, хранилище остаётся v5.
 
 Предварительную сборку 2.2 с IPC v3 также нужно остановить перед обновлением. Подробная справка: `deneb help КОМАНДА`, `КОМАНДА -h` или F1 → «Команды CLI». Имя занимает половину ширины таблицы; выбранное имя дополнительно показывается в двух строках снизу.
 
@@ -54,7 +54,7 @@ Delete предлагает «Убрать из списка» (сохранит
 
 Перед обновлением остановите старый фон. Хранилище v5 сохраняет очереди v1–v4 с отдельной резервной копией; имена и ID частей v4 не меняются, лимит по умолчанию отсутствует. IPC v4 не подключается к старому фону. Не открывайте очередь v5 в 2.0 и более ранних версиях.
 
-Ниже доступны сборки Deneb 2.1.0: стабильная для macOS и экспериментальные для Windows и Linux.
+Ниже доступны сборки Deneb 2.2.0: стабильная для macOS и экспериментальные для Windows и Linux.
 
 ## Фон и соединения
 
@@ -78,10 +78,10 @@ Delete предлагает «Убрать из списка» (сохранит
 | Платформа | Статус | Автономная сборка |
 |---|---|---|
 | macOS Apple Silicon (ARM64) | **Стабильная** | [tar.gz](https://github.com/yazovskiy/Deneb/releases/latest/download/deneb-osx-arm64.tar.gz) |
-| Windows x64 | **Экспериментальная — pre-release** | [zip](https://github.com/yazovskiy/Deneb/releases/download/v2.1.0-experimental.1/deneb-win-x64-experimental.zip) |
-| Linux x64 (glibc) | **Экспериментальная — pre-release** | [tar.gz](https://github.com/yazovskiy/Deneb/releases/download/v2.1.0-experimental.1/deneb-linux-x64-experimental.tar.gz) |
+| Windows x64 | **Экспериментальная — pre-release** | [zip](https://github.com/yazovskiy/Deneb/releases/download/v2.2.0-experimental.1/deneb-win-x64-experimental.zip) |
+| Linux x64 (glibc) | **Экспериментальная — pre-release** | [tar.gz](https://github.com/yazovskiy/Deneb/releases/download/v2.2.0-experimental.1/deneb-linux-x64-experimental.tar.gz) |
 
-Windows/Linux доступны в [отдельном предварительном релизе](https://github.com/yazovskiy/Deneb/releases/tag/v2.1.0-experimental.1); стабильный macOS-релиз остаётся Latest. Автотесты не заменяют полную приёмку терминального интерфейса. **Открытие файла, показ в файловом менеджере и копирование пути пока работают только на macOS.** Сборок Windows/Linux ARM64, Intel Mac и Alpine/musl нет.
+Windows/Linux доступны в [отдельном предварительном релизе](https://github.com/yazovskiy/Deneb/releases/tag/v2.2.0-experimental.1); стабильный macOS-релиз остаётся Latest. Автотесты не заменяют полную приёмку терминального интерфейса. **Открытие файла, показ в файловом менеджере и копирование пути пока работают только на macOS.** Сборок Windows/Linux ARM64, Intel Mac и Alpine/musl нет.
 
 Сначала распакуйте архив: Linux — `./deneb`, Windows PowerShell — `.\deneb.exe` (рекомендуется Windows Terminal). Установка .NET не нужна; для Linux нужны системные зависимости runtime. В экспериментальные архивы включён `EXPERIMENTAL.md` с ограничениями, а к релизу приложены SHA-256. Для пробы используйте отдельный `--state-dir`. Бинарники не подписаны; не отключайте защиту системы целиком.
 

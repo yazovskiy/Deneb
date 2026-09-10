@@ -1,0 +1,37 @@
+name: Upload accepted Deneb 2.2 assets to drafts
+on:
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: write
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Verify accepted source and draft targets
+        run: |
+          test "$(gh run view 34413245093 --json conclusion --jq .conclusion)" = success
+          test "$(gh run view 34413245093 --json headSha --jq .headSha)" = acc4fc71534c070baee68e22b0bec4c6783f7bd8
+          test "$(gh release view v2.2.0 --json isDraft --jq .isDraft)" = true
+          test "$(gh release view v2.2.0-experimental.1 --json isDraft --jq .isDraft)" = true
+      - name: Download exact tested artifacts
+        run: |
+          gh run download 34413245093 -n deneb-2.2.0-osx-arm64 -D mac
+          gh run download 34413245093 -n deneb-2.2.0-linux-x64 -D linux
+          gh run download 34413245093 -n deneb-2.2.0-win-x64 -D win
+      - name: Verify accepted archive digests
+        run: |
+          echo '4422e517798b0bb7d1b8f0c20533203145546eb6e39ca6e3bd4623a219f75dce  mac/release/deneb-osx-arm64.tar.gz' | sha256sum -c -
+          echo '1b700fc6a3cf0478b592717f3d56e3da6e1fa764c13f08a8a45872e25580b695  linux/experimental/deneb-linux-x64-experimental.tar.gz' | sha256sum -c -
+          echo '8bc51567e4463b7689270e641858f6bd10deaa109d41cd0ff1b10143e2896e5f  win/experimental/deneb-win-x64-experimental.zip' | sha256sum -c -
+          (cd mac/release && sha256sum -c SHA256SUMS.txt)
+          (cd linux/experimental && sha256sum -c SHA256SUMS-linux-x64.txt)
+          (cd win/experimental && tr -d '\r' < SHA256SUMS-win-x64.txt | sha256sum -c -)
+      - name: Upload without publishing or replacing assets
+        run: |
+          gh release upload v2.2.0 mac/release/deneb-osx-arm64.tar.gz mac/release/SHA256SUMS.txt
+          gh release upload v2.2.0-experimental.1 linux/experimental/deneb-linux-x64-experimental.tar.gz linux/experimental/SHA256SUMS-linux-x64.txt win/experimental/deneb-win-x64-experimental.zip win/experimental/SHA256SUMS-win-x64.txt

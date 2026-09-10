@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://github.com/yazovskiy/Deneb/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/yazovskiy/Deneb?color=8b9cff&style=flat-square"></a>
   <img alt="macOS Apple Silicon" src="https://img.shields.io/badge/macOS-Apple%20Silicon-111827?style=flat-square&logo=apple">
-  <a href="https://github.com/yazovskiy/Deneb/releases/tag/v2.1.0-experimental.1"><img alt="Windows / Linux experimental" src="https://img.shields.io/badge/Windows%20%2F%20Linux-experimental-fbbf24?style=flat-square"></a>
+  <a href="https://github.com/yazovskiy/Deneb/releases/tag/v2.2.0-experimental.1"><img alt="Windows / Linux experimental" src="https://img.shields.io/badge/Windows%20%2F%20Linux-experimental-fbbf24?style=flat-square"></a>
   <img alt=".NET 10" src="https://img.shields.io/badge/.NET-10-512BD4?style=flat-square&logo=dotnet">
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-7dd3fc?style=flat-square"></a>
 </p>
@@ -38,7 +38,7 @@ deneb remove TASK_ID
 
 In the UI, **/** opens filename search and a state filter; **Ctrl+L** resets both. Hidden marks survive, but bulk actions target only visible marks (or the current visible row). F3/F4 move in the full queue; F9 clears all completed entries including hidden ones. Search is session-only. See the [CLI / JSON reference](docs/cli.md).
 
-**Upgrade:** stop the old background process with the old binary (`deneb stop`). Version 2.2 uses IPC v4 and unchanged storage v5. Published download links below still point to 2.1 until 2.2 acceptance and publication.
+**Upgrade:** stop the old background process with the old binary (`deneb stop`). Version 2.2 uses IPC v4 and unchanged storage v5.
 
 The earlier 2.2 preview used IPC v3 and must also be stopped before upgrading. `deneb help COMMAND` (or `COMMAND -h`) and F1 → CLI commands share detailed help. The filename column uses half the table width, with a two-line selected-name preview underneath.
 
@@ -54,7 +54,7 @@ If space runs low, the task pauses and keeps confirmed parts. Free space, then p
 
 Stop the old background process before upgrading. Storage v5 preserves v1–v4 queues and parts with separate backups, defaults the speed cap to unlimited and keeps v4 part names/IDs unchanged. IPC v4 rejects the older background process. Do not open a v5 store in 2.0 or earlier.
 
-Download Deneb 2.1.0 below: stable on macOS, experimental on Windows and Linux.
+Download Deneb 2.2.0 below: stable on macOS, experimental on Windows and Linux.
 
 ## Background downloads
 
@@ -79,10 +79,10 @@ If the connection is lost, **F11** reconnects; **F12** starts the background pro
 | Platform | Status | Self-contained download |
 |---|---|---|
 | macOS Apple Silicon (ARM64) | **Stable** | [tar.gz](https://github.com/yazovskiy/Deneb/releases/latest/download/deneb-osx-arm64.tar.gz) |
-| Windows x64 | **Experimental — pre-release** | [zip](https://github.com/yazovskiy/Deneb/releases/download/v2.1.0-experimental.1/deneb-win-x64-experimental.zip) |
-| Linux x64 (glibc) | **Experimental — pre-release** | [tar.gz](https://github.com/yazovskiy/Deneb/releases/download/v2.1.0-experimental.1/deneb-linux-x64-experimental.tar.gz) |
+| Windows x64 | **Experimental — pre-release** | [zip](https://github.com/yazovskiy/Deneb/releases/download/v2.2.0-experimental.1/deneb-win-x64-experimental.zip) |
+| Linux x64 (glibc) | **Experimental — pre-release** | [tar.gz](https://github.com/yazovskiy/Deneb/releases/download/v2.2.0-experimental.1/deneb-linux-x64-experimental.tar.gz) |
 
-Windows/Linux builds are published in a [separate pre-release](https://github.com/yazovskiy/Deneb/releases/tag/v2.1.0-experimental.1); the stable macOS release remains Latest. Automated checks do not replace full terminal UX acceptance. **Open file, reveal in file manager and copy path are currently macOS-only.** Windows/Linux ARM64, Intel Macs and Alpine/musl builds are not included.
+Windows/Linux builds are published in a [separate pre-release](https://github.com/yazovskiy/Deneb/releases/tag/v2.2.0-experimental.1); the stable macOS release remains Latest. Automated checks do not replace full terminal UX acceptance. **Open file, reveal in file manager and copy path are currently macOS-only.** Windows/Linux ARM64, Intel Macs and Alpine/musl builds are not included.
 
 Extract the archive before running: `./deneb` on Linux or `.\deneb.exe` in Windows PowerShell (Windows Terminal recommended). No .NET installation is needed; OS-level .NET runtime dependencies are still required on Linux. Experimental archives include `EXPERIMENTAL.md` with limitations; SHA-256 files are attached to their pre-release. Use a separate `--state-dir` when trying them. Binaries are unsigned; do not disable system security globally.
 
